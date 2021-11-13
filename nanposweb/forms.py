@@ -20,8 +20,17 @@ class PinForm(FlaskForm):
     unset_pin = BooleanField(label='Unset PIN', )
     new_pin = PasswordField(label='New PIN', render_kw={'placeholder': 'pin'}, )
     confirm_pin = PasswordField(label='Confirm new PIN', render_kw={'placeholder': 'pin'}, )
+    change_pin = SubmitField(label='Change PIN', )
 
 
 class CardForm(FlaskForm):
     card_number = StringField(label='Card ID', render_kw={'placeholder': 'Card ID'}, )
     unset_card = BooleanField(label='Unset Card', )
+    change_card = SubmitField(label='Change Card', )
+
+
+class QRCodeForm(FlaskForm):
+    username = StringField(label='Username', validators=[InputRequired()], render_kw={'placeholder': 'Username'}, )
+    pin = PasswordField(label='PIN', validators=[InputRequired()], render_kw={'placeholder': 'PIN'}, )
+    download_png = SubmitField(label='Create QR-Code')
+    download_pass = SubmitField(label='Create Wallet Pass')
