@@ -19,11 +19,12 @@ def download():
     form = QRCodeForm()
 
     if form.validate_on_submit():
-        with tempfile.NamedTemporaryFile(dir=current_app.root_path) as qrcode_file:
-            qr_img = qrcode.make(f'{form.username.data}\n{form.pin.data}')
-            qr_img.save(qrcode_file)
+        qrcode_content = f'{form.username.data}\n{form.pin.data}'
 
-            if form.download_png.data:
-                return send_file(qrcode_file.name, as_attachment=True, attachment_filename='qrcode.png')
-            elif form.download_pass.data:
-                return redirect(url_for('utils.qr'))
+        if form.download_png.data:
+            with tempfile.NamedTemporaryFile() as png_file:
+                qr_img = qrcode.make(qrcode_content)
+                qr_img.save(png_file)
+                return send_file(png_file.name, as_attachment=True, attachment_filename='qrcode.png')
+        elif form.download_pass.data:
+            return redirect(url_for('utils.qr'))
