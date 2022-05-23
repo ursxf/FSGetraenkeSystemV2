@@ -32,9 +32,9 @@ def index():
     balance = get_balance(user_id)
 
     last_buy_query = revenue_query(user_id)
-    last_revenue, last_revenue_product_name = db.session.execute(last_buy_query).first()
+    last_revenue, last_revenue_product_name = db.session.execute(last_buy_query).first() or (None, None)
 
-    if not revenue_is_canceable(last_revenue):
+    if last_revenue is not None and not revenue_is_canceable(last_revenue):
         last_revenue = False
 
     most_buyed_query = db.select(Product, db.func.count(Revenue.product).label('CTR')).join(Product).where(
