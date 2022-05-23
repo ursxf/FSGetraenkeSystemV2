@@ -63,3 +63,12 @@ BANK_DATA = {
     'Bank': 'Musterbank'
 }
 ```
+
+### Modules
+If you want to load modules via config, you can define the variable ```MODULES``` inside the instance config.
+The value is an array of import paths of the main module file. This file has to provide a variable 'blueprint' containing the modules blueprint and a method, returning an array of all relevant util tuples.
+
+To load the example module, you can use the following config.
+```python
+MODULES = ['nanposweb.modules.example']
+```
