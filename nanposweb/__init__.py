@@ -26,6 +26,7 @@ def create_app(test_config=None):
         TERMINAL_LOGOUT_TIMEOUT=30,  # logout timeout for Terminal mode in seconds, set to none to disable
         QUICK_CANCEL_SEC=60,  # Second-Limit for canceling a revenue
         BANK_DATA=None,
+        MODULES=None,
         DISPLAY_FAVORITES=3,
     )
     if nanposweb_app.env != 'production':
@@ -103,6 +104,37 @@ def create_app(test_config=None):
         if nanposweb_app.config.get('utils', False):
             utils.extend(nanposweb_app.config['utils'])
         return dict(utils=utils)
+
+    # try to load modules
+    if nanposweb_app.config.get('MODULES', False):
+        new_utils = []
+
+        from importlib import import_module
+        for module_path in nanposweb_app.config['MODULES']:
+            try:
+                needed_attributes = ['blueprint', 'get_utils']
+
+                module = import_module(module_path)
+
+                # Check if module is valid, i.e. contains all needed attributes
+                if not set(dir(module)).issuperset(needed_attributes):
+                    # print("{} is not a valid module!".format(module_path))
+                    continue
+
+                nanposweb_app.register_blueprint(module.blueprint)
+                new_utils.extend(module.get_utils())
+                # print ("{} loaded".format(module_path))
+            except ImportError:
+                # print ("Couldn't find module {}".format(module_path))
+                continue
+       
+        # add new utils to config
+        if len(new_utils) > 0:
+            if not nanposweb_app.config.get('utils', False):
+                nanposweb_app.config['utils'] = []
+
+            nanposweb_app.config['utils'].extend(new_utils)
+            
 
     # blueprint for auth routes in our nanposweb_app
     nanposweb_app.register_blueprint(auth_bp)
