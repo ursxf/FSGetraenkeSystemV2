@@ -127,14 +127,13 @@ def create_app(test_config=None):
             except ImportError:
                 # print ("Couldn't find module {}".format(module_path))
                 continue
-       
+
         # add new utils to config
         if len(new_utils) > 0:
             if not nanposweb_app.config.get('utils', False):
                 nanposweb_app.config['utils'] = []
 
             nanposweb_app.config['utils'].extend(new_utils)
-            
 
     # blueprint for auth routes in our nanposweb_app
     nanposweb_app.register_blueprint(auth_bp)
