@@ -24,6 +24,7 @@ class Product(db.Model):
     has_alc = db.Column('has_alc', db.Boolean, nullable=False, server_default=db.false())
     is_food = db.Column('is_food', db.Boolean, nullable=False, server_default=db.false())
 
+
 # See https://mike.depalatis.net/blog/sqlalchemy-timestamps.html
 class TimeStamp(sa.types.TypeDecorator):
     impl = sa.types.DateTime
@@ -41,6 +42,7 @@ class TimeStamp(sa.types.TypeDecorator):
             return value.replace(tzinfo=timezone.utc)
 
         return value.astimezone(timezone.utc)
+
 
 class Revenue(db.Model):
     __tablename__ = 'revenues'
