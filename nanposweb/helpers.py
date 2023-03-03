@@ -4,6 +4,7 @@ from flask_login import current_user
 from .db.models import Revenue
 from typing import Union
 
+
 def format_currency(value, factor=100):
     return '{:.2f} €'.format(value / factor).replace('.', ',')
 
