@@ -1,21 +1,21 @@
 [tool.poetry]
 name = "nanposweb"
-version = "0.16.0"
+version = "0.17.0"
 description = ""
 authors = ["Dominik Rimpf <dev@drimpf.de>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.9"
-psycopg2 = "^2.9.3"
-Flask = "^2.1.2"
-Flask-SQLAlchemy = "^2.5.1"
-Flask-Login = "^0.6.1"
-Flask-WTF = "^1.0.1"
+psycopg2 = "^2.9.5"
+Flask = "^2.2.3"
+Flask-SQLAlchemy = "^3.0.3"
+Flask-Login = "^0.6.2"
+Flask-WTF = "^1.1.1"
 Flask-Principal = "^0.4.0"
 
 [tool.poetry.dev-dependencies]
-flake8 = "^4.0.1"
+flake8 = "^6.0.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -2,7 +2,7 @@ from hashlib import sha256
 from flask import session, current_app
 from flask_login import current_user
 from .db.models import Revenue
-
+from typing import Union
 
 def format_currency(value, factor=100):
     return '{:.2f} €'.format(value / factor).replace('.', ',')
@@ -30,7 +30,7 @@ def get_user_id():
     return user_id
 
 
-def revenue_is_canceable(revenue: Revenue):
+def revenue_is_canceable(revenue: Union[Revenue, None]):
     if revenue.age.total_seconds() < current_app.config.get('QUICK_CANCEL_SEC'):
         return True
 

@@ -36,8 +36,9 @@ def index():
     last_buy_query = revenue_query(user_id)
     last_revenue, last_revenue_product_name = db.session.execute(last_buy_query).first() or (None, None)
 
-    if last_revenue is not None and not revenue_is_canceable(last_revenue):
-        last_revenue = False
+    last_revenue_canceable = False
+    if last_revenue is not None:
+        last_revenue_canceable = revenue_is_canceable(last_revenue)
 
     most_buyed_timestamp = datetime.datetime.now() - datetime.timedelta(days=current_app.config['FAVORITES_DAYS'])
     most_buyed_query = db.select(Product, db.func.count(Revenue.product).label('CTR')).join(Product).where(
@@ -50,7 +51,7 @@ def index():
     form = MainForm()
     products = Product.query.order_by(Product.name).all()
     return render_template('index.html', products=products, balance=balance, form=form, view_all=view_all,
-                           favorites=favorites, last_revenue=last_revenue,
+                           favorites=favorites, last_revenue=last_revenue, last_revenue_canceable=last_revenue_canceable,
                            last_revenue_product_name=last_revenue_product_name)
 
 

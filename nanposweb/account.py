@@ -10,9 +10,9 @@ from .helpers import check_hash, calc_hash
 account_bp = Blueprint('account', __name__, url_prefix='/account')
 
 
-@account_bp.route('/')
+@account_bp.route('/revenues')
 @login_required
-def index():
+def revenues():
     balance = get_balance(current_user.id)
     revenues_query = revenue_query(current_user.id)
     revenues = db.session.execute(revenues_query).all()

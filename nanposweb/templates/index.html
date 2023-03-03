@@ -15,10 +15,12 @@
             </div>
             {% endif %}
 
-            {% if last_revenue %}
+            {% if last_revenue is not none %}
             <div class="d-flex align-items-center">
-                <span class="me-2">Last Buy: {{ last_revenue_product_name }} for {{ macro.render_currency(last_revenue.amount) }}</span>
+                <span class="me-2">Last Buy: {{ last_revenue_product_name }} for {{ macro.render_currency(last_revenue.amount) }} ({{ last_revenue.date.strftime('%Y-%m-%d %H:%M') }})</span>
+                {%  if last_revenue_canceable %}
                 <a role="button" class="btn btn-danger" href="{{ url_for('main.quick_cancel') }}">Cancel</a>
+                {%  endif %}
             </div>
             {% endif %}
 
