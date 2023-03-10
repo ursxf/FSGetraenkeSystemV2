@@ -24,7 +24,7 @@
             </div>
             {% endif %}
 
-            <div class="row-cols-auto d-flex ms-auto">
+            <div class="row row-cols-auto d-flex ms-auto">
             <div>
                 <span class="nav-link text-dark">User: {{ user_name }}</span>
             </div>
@@ -60,31 +60,35 @@
             </div>
         {% endif %}
         <div class="row row-cols-4 g-3">
-            {% for product in products %}
-                {% if product.visible or view_all %}
-                    <div class="d-grid">
+        {% for product in products %}
+            {% if product.visible or view_all %}
+                {% if product in favorites %}
+                    {% set class = 'btn-primary' %}
+                {% else %}
+                    {% set class = 'btn-outline-primary' %}
+                {% endif %}
+                <div class="d-grid">
+                    <button type="submit" class="btn {{ class }} p-4" name="product_id" value="{{ product.id }}">
                     {% if product in favorites %}
-                        <button type="submit" class="btn btn-primary py-5 ps-5" name="product_id"
+                        {% set icon = "star" %}
+                    {% elif product.is_food %}
+                        {% set icon = (food_icons | random) %}
                     {% else %}
-                        <button type="submit" class="btn btn-outline-primary py-5 ps-5" name="product_id"
+                        {% if product.has_alc %}
+                            {% set icon = (alc_icons | random) %}
+                        {% else %}
+                            {% set icon = (drink_icons | random) %}
+                        {% endif %}
                     {% endif %}
-                                value="{{ product.id }}">
-                            {% if product in favorites %}
-                                {% set icon = "star" %}
-                            {% elif product.is_food %}
-                                {% set icon = (food_icons | random) %}
-                            {% else %}
-                                {% if product.has_alc %}
-                                    {% set icon = (alc_icons | random) %}
-                                {% else %}
-                                    {% set icon = (drink_icons | random) %}
-                                {% endif %}
-                            {% endif %}
-                            <i class="fa-solid fa-{{ icon }} fa-3x" style="float: left"></i>
-                            {{ product.name }}<br>
-                            {{ macro.render_currency(product.price) }}
-                        </button>
-                    </div>
+                        <div class="row align-items-center">
+                            <div class="col-3"><i class="fa-solid fa-{{ icon }} fa-3x"></i></div>
+                            <div class="col-9 row align-items-center">
+                                <div class="col-12 mb-2">{{ product.name }}</div>
+                                <div class="col-12">{{ macro.render_currency(product.price) }}</div>
+                            </div>
+                        </div>
+                    </button>
+                </div>
                 {% endif %}
             {% endfor %}
         </div>
