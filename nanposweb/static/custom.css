@@ -24,6 +24,10 @@ input[type=number] {
     -moz-appearance: textfield;
 }
 
+footer > div > div {
+    justify-content: center;
+}
+
 footer > div > div > div > a {
     text-decoration: none;
 }
