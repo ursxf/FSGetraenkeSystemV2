@@ -2,6 +2,11 @@ body {
     font-family: 'Open Sans', sans-serif;
 }
 
+main {
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
 main > .container {
     padding-top: 9px;
     padding-bottom: 65px;
