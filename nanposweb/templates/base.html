@@ -32,7 +32,7 @@
         <nav class="navbar navbar-dark bg-primary">
             <div class="container">
                 <a href="{{ url_for('main.index') }}" class="navbar-brand">
-                    <i class="fa-solid fa-cash-register me-1 d-inline-block"></i>
+                    <i class="fa-solid fa-cash-register d-inline-block"></i>
                     NANPOS Web{% if session.get('terminal', False) %} Terminal{% endif %}
                 </a>
 
@@ -40,7 +40,7 @@
                     {% block pagetitle %}{% endblock %}
                 </ul>
 
-                <div class="col-auto ms-3 text-end">
+                <div class="col-auto text-end">
                     {% if current_user.is_authenticated %}
                         {% if current_user.isop %}
                             <div class="btn-group me-2" role="group">
