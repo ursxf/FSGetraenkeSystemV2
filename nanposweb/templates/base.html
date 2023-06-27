@@ -29,16 +29,16 @@
 <body class="d-flex flex-column h-100">
 <header class="flex-grow-0 flex-shrink-0">
     {% block header %}
-        <nav class="navbar navbar-dark bg-primary">
+        <nav class="navbar navbar-expand-md navbar-dark bg-primary">
             <div class="container">
                 <a href="{{ url_for('main.index') }}" class="navbar-brand">
                     <i class="fa-solid fa-cash-register d-inline-block"></i>
                     NANPOS Web{% if session.get('terminal', False) %} Terminal{% endif %}
                 </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarTogglerDemo02" aria-controls="navbarTogglerDemo02" aria-expanded="false" aria-label="Toggle navigation">
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggler" aria-controls="navbarToggler" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
-                <div class="collapse navbar-collapse" id="navbarTogglerDemo02">
+                <div class="collapse navbar-collapse" id="navbarToggler">
                     <ul class="nav col-auto me-auto d-flex text-white text-decoration-none fs-5">
                         {% block pagetitle %}{% endblock %}
                     </ul>
