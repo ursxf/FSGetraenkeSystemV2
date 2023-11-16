@@ -5,6 +5,7 @@ from .forms import BalanceForm, UserForm
 from .helpers import admin_permission
 from ..db import db
 from ..db.models import User, Revenue
+from ..db.helpers import get_balance, revenue_query
 from ..helpers import calc_hash
 
 users_bp = Blueprint('users', __name__, url_prefix='/users')
@@ -109,6 +110,20 @@ def balance(user_id):
             flash('Submitted form was not valid!', category='danger')
 
     return render_template('users/balance.html', form=form, user=user)
+
+
+@users_bp.route('/revenues/<user_id>', methods=['GET'])
+@login_required
+@admin_permission.require(http_exception=401)
+def revenues(user_id):
+    user_id = int(user_id)
+
+    user = User.query.get(user_id)
+    balance = get_balance(user_id)
+    revenues_query = revenue_query(user_id)
+    revenues = db.session.execute(revenues_query).all()
+
+    return render_template('users/revenues.html', user=user, balance=balance, revenues=revenues)
 
 
 @users_bp.route('/add')

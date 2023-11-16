@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Revenues{% endblock %}
+
+{% block utilbar %}
+    <div class="navbar navbar-light bg-light">
+        <div class="container row-cols-auto">
+            <div class="row row-cols-auto d-flex ms-auto">
+            <div>
+                <span class="nav-link text-dark">User: {{ user.name }}</span>
+            </div>
+            <div>
+                <span class="nav-link text-dark">Balance: {{ macro.render_currency(balance) }}</span>
+            </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <table class="table table-sm table-hover">
+        <thead>
+        <tr>
+            <th scope="col">Date</th>
+            <th scope="col">Product</th>
+            <th scope="col" class="text-end">Amount</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for revenue, product_name in revenues %}
+            <tr>
+                <td>{{ revenue.date.strftime('%Y-%m-%d %H:%M') }}</td>
+                <td>{{ product_name }}</td>
+                <td class="text-end">{{ macro.render_currency(revenue.amount) }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
