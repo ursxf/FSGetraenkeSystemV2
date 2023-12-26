@@ -1,11 +1,11 @@
-from flask import Blueprint, render_template, redirect, url_for, session, flash, request
+from flask import Blueprint, Response, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required
 
 from .forms import BalanceForm, UserForm
 from .helpers import admin_permission
 from ..db import db
-from ..db.models import User, Revenue
 from ..db.helpers import get_balance, revenue_query
+from ..db.models import Revenue, User
 from ..helpers import calc_hash
 
 users_bp = Blueprint('users', __name__, url_prefix='/users')
@@ -14,7 +14,7 @@ users_bp = Blueprint('users', __name__, url_prefix='/users')
 @users_bp.route('/')
 @login_required
 @admin_permission.require(http_exception=401)
-def index():
+def index() -> str:
     aggregation = db.select(db.func.sum(Revenue.amount).label('balance'), Revenue.user.label('user_id')).group_by(
         Revenue.user).subquery()
     user_query = db.select(User, db.func.coalesce(aggregation.c.balance, 0)).outerjoin(
@@ -28,7 +28,7 @@ def index():
 @users_bp.route('/', methods=['POST'])
 @login_required
 @admin_permission.require(http_exception=401)
-def post():
+def post() -> Response | str:
     form = UserForm()
     if not form.validate_on_submit():
         flash('Submitted form was not valid!', category='danger')
@@ -67,7 +67,7 @@ def post():
 @users_bp.route('/impersonate/<user_id>')
 @login_required
 @admin_permission.require(http_exception=401)
-def impersonate(user_id):
+def impersonate(user_id: int) -> Response:
     session['impersonate'] = user_id
     return redirect(url_for('main.index'))
 
@@ -75,7 +75,7 @@ def impersonate(user_id):
 @users_bp.route('/impersonate/pop')
 @login_required
 @admin_permission.require(http_exception=401)
-def pop_impersonate():
+def pop_impersonate() -> Response:
     session.pop('impersonate', None)
     return redirect(url_for('admin.users.index'))
 
@@ -83,8 +83,8 @@ def pop_impersonate():
 @users_bp.route('/balance/<user_id>', methods=['GET', 'POST'])
 @login_required
 @admin_permission.require(http_exception=401)
-def balance(user_id):
-    user = User.query.get(int(user_id))
+def balance(user_id: int) -> Response | str:
+    user = User.query.get(user_id)
     form = BalanceForm()
 
     if request.method == 'POST':
@@ -106,8 +106,8 @@ def balance(user_id):
             db.session.add(rev)
             db.session.commit()
             return redirect(url_for('admin.users.index'))
-        else:
-            flash('Submitted form was not valid!', category='danger')
+
+        flash('Submitted form was not valid!', category='danger')
 
     return render_template('users/balance.html', form=form, user=user)
 
@@ -115,9 +115,7 @@ def balance(user_id):
 @users_bp.route('/revenues/<user_id>', methods=['GET'])
 @login_required
 @admin_permission.require(http_exception=401)
-def revenues(user_id):
-    user_id = int(user_id)
-
+def revenues(user_id: int) -> str:
     user = User.query.get(user_id)
     balance = get_balance(user_id)
     revenues_query = revenue_query(user_id)
@@ -129,7 +127,7 @@ def revenues(user_id):
 @users_bp.route('/add')
 @login_required
 @admin_permission.require(http_exception=401)
-def add():
+def add() -> str:
     form = UserForm()
     return render_template('users/form.html', form=form, edit=False)
 
@@ -137,8 +135,8 @@ def add():
 @users_bp.route('/edit/<user_id>')
 @login_required
 @admin_permission.require(http_exception=401)
-def edit(user_id):
-    user = User.query.get(int(user_id))
+def edit(user_id: int) -> str:
+    user = User.query.get(user_id)
     form = UserForm(
         id=user.id,
         name=user.name,
@@ -151,8 +149,8 @@ def edit(user_id):
 @users_bp.route('/delete/<user_id>')
 @login_required
 @admin_permission.require(http_exception=401)
-def delete(user_id):
-    user = User.query.get(int(user_id))
+def delete(user_id: int) -> Response:
+    user = User.query.get(user_id)
     db.session.delete(user)
     db.session.commit()
     flash(f'Deleted user "{user.name}"', category='success')

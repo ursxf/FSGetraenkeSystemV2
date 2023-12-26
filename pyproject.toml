@@ -6,7 +6,7 @@ authors = ["Dominik Rimpf <dev@drimpf.de>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.11"
 psycopg2 = "^2.9.5"
 Flask = "^2.2.3"
 Flask-SQLAlchemy = "^3.0.3"
@@ -14,8 +14,61 @@ Flask-Login = "^0.6.2"
 Flask-WTF = "^1.1.1"
 Flask-Principal = "^0.4.0"
 
-[tool.poetry.dev-dependencies]
-flake8 = "^6.0.0"
+[tool.poetry.group.lint.dependencies]
+bandit = {extras = ["toml"], version = "^1.7.4"}
+ruff = "^0.1.7"
+mypy = "^0.991"
+types-wtforms = "^3.1.0.2" # for mypy
+
+[tool.ruff]
+# Ignore build and venv directory
+exclude = ["build", ".venv"]
+
+# 80 chars aren't enough in 21 century
+line-length = 128
+indent-width = 2
+
+target-version = "py311"
+
+show-fixes = true
+fix = false
+
+[tool.ruff.lint]
+select = ["F", "E", "W", "C90", "I", "N", "UP", "ANN", "S", "B", "A", "C4", "G", "PIE", "T20", "PYI", "PT", "Q", "RET", "SIM", "PTH", "RUF"]
+# ANN101,ANN102: flake8-annotations, anotations for self and cls
+# S101: flake8-bandit forbids asserts
+# UP007: ignore modern typehints until https://github.com/tiangolo/typer/issues/533 is fixed
+ignore = ["ANN101", "ANN102", "S101", "UP007"]
+
+[tool.ruff.lint.isort]
+relative-imports-order = "closest-to-furthest"
+
+[tool.ruff.lint.flake8-annotations]
+# Ignore opinionated flake8-annotation rule
+suppress-none-returning = true
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
+[tool.ruff.format]
+# 5. Use single quotes for non-triple-quoted strings.
+quote-style = "single"
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "flask_login",
+    "flask_principal",
+    "flask_wtf"
+]
+ignore_missing_imports = true
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

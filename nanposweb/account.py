@@ -1,27 +1,27 @@
-from flask import Blueprint, render_template, flash, redirect, url_for, request
+from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from wtforms.validators import InputRequired
 
 from .db import db
 from .db.helpers import get_balance, revenue_query
-from .forms import PinForm, CardForm
-from .helpers import check_hash, calc_hash
+from .forms import CardForm, PinForm
+from .helpers import calc_hash, check_hash
 
 account_bp = Blueprint('account', __name__, url_prefix='/account')
 
 
 @account_bp.route('/revenues')
 @login_required
-def revenues():
+def revenues() -> str:
     balance = get_balance(current_user.id)
     revenues_query = revenue_query(current_user.id)
-    revenues = db.session.execute(revenues_query).all()
-    return render_template('account/index.html', balance=balance, revenues=revenues)
+    revenues_result = db.session.execute(revenues_query).all()
+    return render_template('account/index.html', balance=balance, revenues=revenues_result)
 
 
 @account_bp.route('/pin', methods=['GET', 'POST'])
 @login_required
-def pin():
+def pin() -> Response | str:
     form = PinForm()
 
     no_pin_attrs = ['readonly', 'disabled']
@@ -36,10 +36,9 @@ def pin():
 
     if request.method == 'POST':
         if form.validate_on_submit():
-            if current_user.pin is not None:
-                if not check_hash(current_user.pin, form.old_pin.data):
-                    flash('Old PIN is not correct', category='danger')
-                    return render_template('account/change_pin.html', form=form)
+            if current_user.pin is not None and not check_hash(current_user.pin, form.old_pin.data):
+                flash('Old PIN is not correct', category='danger')
+                return render_template('account/change_pin.html', form=form)
 
             if form.new_pin.data != form.confirm_pin.data:
                 flash('New PIN and Confirmation do not match', category='danger')
@@ -54,15 +53,15 @@ def pin():
 
             db.session.commit()
             return redirect(url_for('main.index'))
-        else:
-            flash('Submitted form was not valid!', category='danger')
+
+        flash('Submitted form was not valid!', category='danger')
 
     return render_template('account/change_pin.html', form=form)
 
 
 @account_bp.route('/card', methods=['GET', 'POST'])
 @login_required
-def card():
+def card() -> Response | str:
     form = CardForm()
 
     if request.method == 'POST':
@@ -76,7 +75,7 @@ def card():
 
             db.session.commit()
             return redirect(url_for('main.index'))
-        else:
-            flash('Submitted form was not valid!', category='danger')
+
+        flash('Submitted form was not valid!', category='danger')
 
     return render_template('account/change_card.html', form=form)

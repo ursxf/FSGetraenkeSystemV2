@@ -16,17 +16,29 @@ before_script:
   - which poetry || pip3 install poetry
   - poetry config cache-dir ${POETRY_CACHE_DIR}
   - poetry config virtualenvs.in-project true
-  - poetry install
 
 stages:
   - lint
   - build
   - release
 
-flake8:
+ruff:
   stage: lint
   script:
-    - poetry run flake8 .
+    - poetry install --with=lint
+    - poetry run ruff check
+
+mypy:
+  stage: lint
+  script:
+    - poetry install --with=lint
+    - poetry run mypy nanposweb
+
+bandit:
+  stage: lint
+  script:
+    - poetry install --with=lint
+    - poetry run bandit -c pyproject.toml -r .
 
 build:
   stage: build

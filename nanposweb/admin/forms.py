@@ -1,10 +1,10 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, BooleanField, SubmitField, PasswordField, IntegerField, DecimalField
+from wtforms import BooleanField, DecimalField, IntegerField, PasswordField, StringField, SubmitField
 from wtforms.validators import InputRequired, Optional
 
 
 class ProductForm(FlaskForm):
-    id = IntegerField(label='ID', render_kw={'placeholder': 'id', 'readonly': ''}, )
+    id = IntegerField(label='ID', render_kw={'placeholder': 'id', 'readonly': ''}, )  # noqa: A003
     name = StringField(label='Name', validators=[InputRequired()], render_kw={'placeholder': 'name'}, )
     ean = IntegerField(label='EAN', validators=[Optional(strip_whitespace=True)], render_kw={'placeholder': 'ean'}, )
     price = IntegerField(label='Price', validators=[InputRequired()], render_kw={'placeholder': 'price'}, )
@@ -14,7 +14,7 @@ class ProductForm(FlaskForm):
 
 
 class UserForm(FlaskForm):
-    id = IntegerField(label='ID', render_kw={'placeholder': 'id', 'readonly': ''}, )
+    id = IntegerField(label='ID', render_kw={'placeholder': 'id', 'readonly': ''}, )  # noqa: A003
     name = StringField(label='Name', validators=[InputRequired()], render_kw={'placeholder': 'name'}, )
     card = StringField(label='Card ID', render_kw={'placeholder': 'Card ID'}, )
     unset_card = BooleanField(label='Unset Card', )

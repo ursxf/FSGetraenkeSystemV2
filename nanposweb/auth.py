@@ -1,6 +1,6 @@
-from flask import Blueprint, render_template, redirect, url_for, request, flash, current_app, session
-from flask_login import login_required, logout_user, login_user, current_user
-from flask_principal import identity_changed, Identity, AnonymousIdentity
+from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, session, url_for
+from flask_login import current_user, login_required, login_user, logout_user
+from flask_principal import AnonymousIdentity, Identity, identity_changed
 
 from .db.models import User
 from .forms import LoginForm
@@ -10,7 +10,7 @@ auth_bp = Blueprint('auth', __name__)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-def login():
+def login() -> Response | str:
     if current_user.is_authenticated:
         flash('Already logged in.')
         return redirect(request.args.get('next') or url_for('main.index'))
@@ -29,8 +29,8 @@ def login():
                 identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
 
                 return redirect(request.args.get('next') or url_for('main.index'))
-            else:
-                flash('Please check your login details and try again.', category='danger')
+
+            flash('Please check your login details and try again.', category='danger')
         else:
             flash('Submitted form was not valid!', category='danger')
 
@@ -39,7 +39,7 @@ def login():
 
 @auth_bp.route('/logout')
 @login_required
-def logout():
+def logout() -> Response:
     logout_user()
 
     # Remove session keys set by Flask-Principal
@@ -54,5 +54,5 @@ def logout():
 
     if session.get('terminal', False):
         return redirect(url_for('auth.login', terminal=True))
-    else:
-        return redirect(url_for('auth.login'))
+
+    return redirect(url_for('auth.login'))

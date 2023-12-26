@@ -1,9 +1,10 @@
-import os
+import contextlib
 from importlib import metadata
+from pathlib import Path
 
-from flask import Flask, flash, session, redirect, url_for
+from flask import Flask, Response, flash, redirect, session, url_for
 from flask_login import LoginManager, current_user
-from flask_principal import Principal, identity_loaded, UserNeed, RoleNeed
+from flask_principal import Principal, RoleNeed, UserNeed, identity_loaded
 
 from .account import account_bp
 from .admin import admin_bp
@@ -14,11 +15,10 @@ from .helpers import format_currency
 from .main import main_bp
 
 
-def create_app(test_config=None):
+def create_app(test_config: dict | None = None) -> Flask:  # noqa: C901
     # create and configure the nanposweb_app
     nanposweb_app = Flask(__name__, instance_relative_config=True)
     nanposweb_app.config.from_mapping(
-        SECRET_KEY='dev',
         SESSION_COOKIE_SECURE=True,
         REMEMBER_COOKIE_SECURE=True,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
@@ -43,10 +43,8 @@ def create_app(test_config=None):
         nanposweb_app.config.from_mapping(test_config)
 
     # ensure the instance folder exists
-    try:
-        os.makedirs(nanposweb_app.instance_path)
-    except OSError:
-        pass
+    with contextlib.suppress(OSError):
+        Path(nanposweb_app.instance_path).mkdir(parents=True)
 
     db.init_app(nanposweb_app)
 
@@ -57,7 +55,7 @@ def create_app(test_config=None):
     login_manager.init_app(nanposweb_app)
 
     @login_manager.unauthorized_handler
-    def unauthorized():
+    def unauthorized() -> Response:
         if login_manager.localize_callback is not None:
             flash(login_manager.localize_callback(login_manager.login_message),
                   category=login_manager.login_message_category)
@@ -66,15 +64,15 @@ def create_app(test_config=None):
 
         if session.get('terminal', False):
             return redirect(url_for('auth.login', terminal=True))
-        else:
-            return redirect(url_for('auth.login'))
+
+        return redirect(url_for('auth.login'))
 
     @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.get(int(user_id))
+    def load_user(user_id: int) -> User:
+        return User.query.get(user_id)
 
     @identity_loaded.connect_via(nanposweb_app)
-    def on_identity_loaded(sender, identity):
+    def on_identity_loaded(sender, identity):  # noqa: ANN001
         # Set the identity user object
         identity.user = current_user
 
@@ -89,21 +87,18 @@ def create_app(test_config=None):
     nanposweb_app.jinja_env.filters['format_currency'] = format_currency
 
     @nanposweb_app.context_processor
-    def get_version():
-        if nanposweb_app.debug:
-            version = 'devel'
-        else:
-            version = metadata.version('nanposweb')
-        return dict(version=version)
+    def get_version() -> dict:
+        version = 'devel' if nanposweb_app.debug else metadata.version('nanposweb')
+        return {'version': version}
 
     @nanposweb_app.context_processor
-    def get_utils():
+    def get_utils() -> dict:
         utils = []
         if nanposweb_app.config.get('BANK_DATA', False):
             utils.append(('main.bank_account', 'Bank Account'))
         if nanposweb_app.config.get('utils', False):
             utils.extend(nanposweb_app.config['utils'])
-        return dict(utils=utils)
+        return {'utils': utils}
 
     # blueprint for auth routes in our nanposweb_app
     nanposweb_app.register_blueprint(auth_bp)

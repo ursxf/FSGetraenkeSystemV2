@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, flash, redirect, url_for
+from flask import Blueprint, Response, flash, redirect, render_template, url_for
 from flask_login import login_required
 
 from .forms import ProductForm
@@ -12,7 +12,7 @@ products_bp = Blueprint('products', __name__, url_prefix='/products')
 @products_bp.route('/')
 @login_required
 @admin_permission.require(http_exception=401)
-def index():
+def index() -> str:
     products = Product.query.order_by(Product.name).all()
     return render_template('products/index.html', products=products)
 
@@ -20,7 +20,7 @@ def index():
 @products_bp.route('/', methods=['POST'])
 @login_required
 @admin_permission.require(http_exception=401)
-def post():
+def post() -> Response | str:
     form = ProductForm()
     if not form.validate_on_submit():
         flash('Submitted form was not valid!', category='danger')
@@ -55,7 +55,7 @@ def post():
 @products_bp.route('/add')
 @login_required
 @admin_permission.require(http_exception=401)
-def add():
+def add() -> str:
     form = ProductForm()
     return render_template('products/form.html', form=form, edit=False)
 
@@ -63,7 +63,7 @@ def add():
 @products_bp.route('/edit/<product_id>')
 @login_required
 @admin_permission.require(http_exception=401)
-def edit(product_id):
+def edit(product_id: int) -> str:
     item = Product.query.filter_by(id=product_id).one()
     form = ProductForm(
         id=item.id,
@@ -80,8 +80,8 @@ def edit(product_id):
 @products_bp.route('/delete/<product_id>')
 @login_required
 @admin_permission.require(http_exception=401)
-def delete(product_id):
-    product = Product.query.get(int(product_id))
+def delete(product_id: int) -> Response:
+    product = Product.query.get(product_id)
     db.session.delete(product)
     db.session.commit()
     flash(f'Deleted product "{product.name}"', category='success')
