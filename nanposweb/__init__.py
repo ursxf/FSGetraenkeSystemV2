@@ -21,6 +21,7 @@ def create_app(test_config: dict | None = None) -> Flask:  # noqa: C901
     # create and configure the nanposweb_app
     nanposweb_app = Flask(__name__, instance_relative_config=True)
     nanposweb_app.config.from_mapping(
+        SESSION_COOKIE_SAMESITE='Strict',
         SESSION_COOKIE_SECURE=True,
         REMEMBER_COOKIE_SECURE=True,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
@@ -35,6 +36,7 @@ def create_app(test_config: dict | None = None) -> Flask:  # noqa: C901
         nanposweb_app.config.from_mapping(
             SECRET_KEY='debug',  # noqa: S106
             TESTING=True,
+            SESSION_COOKIE_SAMESITE=None,
             SESSION_COOKIE_SECURE=False,
             REMEMBER_COOKIE_SECURE=False,
         )
