@@ -21,8 +21,13 @@
                     </tr>
 {% endfor %}
                     <tr>
-                        <th scope="row">Amount</th>
-                        <td>{{ amount | format_currency }}</td>
+                        <th scope="row"><label for="amount">Amount</label></th>
+                        <td>
+                            <div  class="input-group">
+                                <span class="input-group-text">€</span>
+                                <input class="form-control" type="number" id="amount" min="0" step="0.10" value="{{ '%0.2f' | format(amount / 100)  }}"/>
+                            </div>
+                        </td>
                     </tr>
                     <tr>
                         <th scope="row">Reason for payment</th>
@@ -44,38 +49,36 @@
 <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 {% if bank_data is not none %}
 <script type="application/javascript">
-let recipient = "{{ bank_data.Owner }}";
-let iban = "{{ bank_data.IBAN }}";
-let bic = "{{ bank_data.BIC }}";
-let credit_institute = "{{ bank_data.Bank }}";
-let subject = "{{ subject }}";
-let amount = {{ amount }} / 100;
-let qr_code_text = `BCD
+function qrCodeText(amount) {
+    return `BCD
 002
 1
 SCT
-${bic}
-${recipient}
-${iban}
+{{ bank_data.BIC }}
+{{ bank_data.Owner }}
+{{ bank_data.IBAN }}
 EUR${amount.toFixed(2)}
 
 
-${subject}
-
+{{ subject }}
 `;
-
-function createEPCQR(qr_obj) {
-    return ;
 }
 
 document.addEventListener("DOMContentLoaded", function () {
-    var qrcode = new QRCode(
+    let amount = {{ amount }} / 100;
+    let qrcode = new QRCode(
         document.getElementById("qrcode"),
         {
-            text: qr_code_text,
+            text: qrCodeText(amount),
             correctLevel: QRCode.CorrectLevel.H,
         }
     );
+
+    let input = document.getElementById("amount")
+    input.addEventListener("input", function () {
+        amount = this.valueAsNumber
+        qrcode.makeCode(qrCodeText(amount))
+    })
 });
 </script>
 {% endif %}
