@@ -2,16 +2,18 @@ import contextlib
 from importlib import metadata
 from pathlib import Path
 
-from flask import Flask, Response, flash, redirect, session, url_for
+from flask import Flask, flash, redirect, session, url_for
 from flask_login import LoginManager, current_user
 from flask_principal import Principal, RoleNeed, UserNeed, identity_loaded
+from werkzeug.wrappers import Response
 
 from .account import account_bp
 from .admin import admin_bp
 from .auth import auth_bp
 from .db import db
+from .db.helpers import get_balance
 from .db.models import User
-from .helpers import format_currency
+from .helpers import format_currency, get_user_id
 from .main import main_bp
 
 
@@ -31,6 +33,8 @@ def create_app(test_config: dict | None = None) -> Flask:  # noqa: C901
     )
     if nanposweb_app.debug:
         nanposweb_app.config.from_mapping(
+            SECRET_KEY='debug',  # noqa: S106
+            TESTING=True,
             SESSION_COOKIE_SECURE=False,
             REMEMBER_COOKIE_SECURE=False,
         )
@@ -84,7 +88,13 @@ def create_app(test_config: dict | None = None) -> Flask:  # noqa: C901
         if hasattr(current_user, 'isop'):
             identity.provides.add(RoleNeed('admin'))
 
-    nanposweb_app.jinja_env.filters['format_currency'] = format_currency
+    nanposweb_app.jinja_env.filters.update(
+        format_currency=format_currency,
+    )
+
+    @nanposweb_app.context_processor
+    def functions() -> dict:
+        return {'get_balance': get_balance, 'get_user_id': get_user_id}
 
     @nanposweb_app.context_processor
     def get_version() -> dict:

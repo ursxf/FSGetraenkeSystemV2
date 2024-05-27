@@ -9,7 +9,7 @@
                 <span class="nav-link text-dark">User: {{ user.name }}</span>
             </div>
             <div>
-                <span class="nav-link text-dark">Balance: {{ macro.render_currency(balance) }}</span>
+                <span class="nav-link text-dark">Balance: {{ macro.render_currency(get_balance(get_user_id())) }}</span>
             </div>
             </div>
         </div>

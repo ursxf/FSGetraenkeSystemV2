@@ -1,10 +1,11 @@
-from flask import Blueprint, Response, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required
+from werkzeug.wrappers import Response
 
 from .forms import BalanceForm, UserForm
 from .helpers import admin_permission
 from ..db import db
-from ..db.helpers import get_balance, revenue_query
+from ..db.helpers import revenue_query
 from ..db.models import Revenue, User
 from ..helpers import calc_hash
 
@@ -117,11 +118,9 @@ def balance(user_id: int) -> Response | str:
 @admin_permission.require(http_exception=401)
 def revenues(user_id: int) -> str:
     user = User.query.get(user_id)
-    balance = get_balance(user_id)
     revenues_query = revenue_query(user_id)
-    revenues = db.session.execute(revenues_query).all()
 
-    return render_template('users/revenues.html', user=user, balance=balance, revenues=revenues)
+    return render_template('users/revenues.html', user=user, revenues=db.session.execute(revenues_query).all())
 
 
 @users_bp.route('/add')

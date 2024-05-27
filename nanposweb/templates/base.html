@@ -5,22 +5,20 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    {% block styles %}
-        <!-- Bootstrap CSS -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css"
-              integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65"
-              crossorigin="anonymous">
-        <!-- Fontawesome -->
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.3.0/css/all.min.css"
-              integrity="sha256-/4UQcSmErDzPCMAiuOiWPVVsNN2s3ZY/NsmXNcj0IFc=" crossorigin="anonymous"
-              referrerpolicy="no-referrer">
-        <!-- Open Sans Font -->
-        <link href="https://fonts.cdnfonts.com/css/open-sans" rel="stylesheet">
-        <!-- Custom -->
-        <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}"/>
-    {% endblock %}
-    {% block additional_styles %}
-    {% endblock %}
+{% block styles %}
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+          integrity="sha256-PI8n5gCcz9cQqQXm3PEtDuPG8qx9oFsFctPg0S5zb8g=" crossorigin="anonymous">
+    <!-- Fontawesome -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/css/all.min.css"
+          integrity="sha256-XOqroi11tY4EFQMR9ZYwZWKj5ZXiftSx36RRuC3anlA=" crossorigin="anonymous">
+    <!-- Open Sans Font -->
+    <link href="https://fonts.cdnfonts.com/css/open-sans" rel="stylesheet">
+    <!-- Custom -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='custom.css') }}"/>
+{% endblock %}
+{% block additional_styles %}
+{% endblock %}
 
     <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="32x32">
 
@@ -28,103 +26,103 @@
 </head>
 <body class="d-flex flex-column h-100">
 <header class="flex-grow-0 flex-shrink-0">
-    {% block header %}
-        <nav class="navbar navbar-expand-md navbar-dark bg-primary">
-            <div class="container">
-                <a href="{{ url_for('main.index') }}" class="navbar-brand">
-                    <i class="fa-solid fa-cash-register d-inline-block"></i>
-                    NANPOS Web{% if session.get('terminal', False) %} Terminal{% endif %}
-                </a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggler" aria-controls="navbarToggler" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
-                <div class="collapse navbar-collapse" id="navbarToggler">
-                    <ul class="nav col-auto me-auto d-flex text-white text-decoration-none fs-5">
-                        {% block pagetitle %}{% endblock %}
-                    </ul>
+{% block header %}
+    <nav class="navbar navbar-expand-md navbar-dark bg-primary">
+        <div class="container">
+            <a href="{{ url_for('main.index') }}" class="navbar-brand">
+                <i class="fa-solid fa-cash-register d-inline-block"></i>
+                NANPOS Web{% if session.get('terminal', False) %} Terminal{% endif %}
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarToggler" aria-controls="navbarToggler" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarToggler">
+                <ul class="nav col-auto me-auto d-flex text-white text-decoration-none fs-5">
+                    {% block pagetitle %}{% endblock %}
+                </ul>
 
-                    <div class="col-auto text-end">
-                        {% if current_user.is_authenticated %}
-                            {% if current_user.isop %}
-                                <div class="btn-group my-2 my-lg-0 me-lg-2" role="group">
-                                    <button id="admin_dropdown" type="button"
-                                            class="btn btn-light dropdown-toggle"
-                                            data-bs-toggle="dropdown" aria-expanded="false">
-                                        Admin
-                                    </button>
-                                    <ul class="dropdown-menu" aria-labelledby="admin_dropdown">
-                                        <li><a class="dropdown-item" href="{{ url_for('admin.users.index') }}">Users</a>
-                                        </li>
-                                        <li><a class="dropdown-item"
-                                               href="{{ url_for('admin.products.index') }}">Products</a>
-                                        </li>
-                                    </ul>
-                                </div>
-                            {% endif %}
-                            <div class="btn-group my-2 my-lg-0 me-lg-2" role="group">
-                                <button id="account_dropdown" type="button"
-                                        class="btn btn-light dropdown-toggle"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                    Account
-                                </button>
-                                <ul class="dropdown-menu" aria-labelledby="account_dropdown">
-                                    <li><a class="dropdown-item" href="{{ url_for('account.revenues') }}">Revenues</a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('account.card') }}">Change Card</a></li>
-                                    <li><a class="dropdown-item" href="{{ url_for('account.pin') }}">Change PIN</a></li>
-                                </ul>
-                            </div>
-                        {% endif %}
-                        {% if utils %}
-                            <div class="btn-group my-2 my-lg-0 me-lg-2" role="group">
-                                <button id="util_dropdown" type="button"
-                                        class="btn btn-light dropdown-toggle"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                    Utils
-                                </button>
-                                <ul class="dropdown-menu" aria-labelledby="account_dropdown">
-                                    {% for util_func, util_name in utils %}
-                                        <li><a class="dropdown-item" href="{{ url_for(util_func) }}">{{ util_name }}</a>
-                                        </li>
-                                    {% endfor %}
-                                </ul>
-                            </div>
-                        {% endif %}
-                        {% if current_user.is_authenticated %}
-                            <a href="{{ url_for('auth.logout') }}" role="button" class="btn btn-danger my-2 my-lg-0">Logout</a>
-                        {% else %}
-                            <a href="{{ url_for('auth.login') }}" role="button" class="btn btn-success my-2 my-lg-0">Login</a>
-                        {% endif %}
+                <div class="col-auto text-end">
+{% if current_user.is_authenticated %}
+{% if current_user.isop %}
+                    <div class="btn-group my-2 my-lg-0 me-lg-2" role="group">
+                        <button id="admin_dropdown" type="button"
+                                class="btn btn-light dropdown-toggle"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            Admin
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="admin_dropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('admin.users.index') }}">Users</a>
+                            </li>
+                            <li><a class="dropdown-item"
+                                   href="{{ url_for('admin.products.index') }}">Products</a>
+                            </li>
+                        </ul>
                     </div>
+{% endif %}
+                    <div class="btn-group my-2 my-lg-0 me-lg-2" role="group">
+                        <button id="account_dropdown" type="button"
+                                class="btn btn-light dropdown-toggle"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            Account
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="account_dropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('account.revenues') }}">Revenues</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('account.card') }}">Change Card</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('account.pin') }}">Change PIN</a></li>
+                        </ul>
+                    </div>
+{% endif %}
+{% if utils %}
+                    <div class="btn-group my-2 my-lg-0 me-lg-2" role="group">
+                        <button id="util_dropdown" type="button"
+                                class="btn btn-light dropdown-toggle"
+                                data-bs-toggle="dropdown" aria-expanded="false">
+                            Utils
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="account_dropdown">
+                            {% for util_func, util_name in utils %}
+                                <li><a class="dropdown-item" href="{{ url_for(util_func) }}">{{ util_name }}</a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+{% endif %}
+{% if current_user.is_authenticated %}
+                    <a href="{{ url_for('auth.logout') }}" role="button" class="btn btn-danger my-2 my-lg-0">Logout</a>
+{% else %}
+                    <a href="{{ url_for('auth.login') }}" role="button" class="btn btn-success my-2 my-lg-0">Login</a>
+{% endif %}
                 </div>
             </div>
-        </nav>
-    {% endblock %}
-    {% block utilbar %}
-    {% endblock %}
+        </div>
+    </nav>
+{% endblock %}
+{% block utilbar %}
+{% endblock %}
 </header>
 
 <div class="position-fixed top-0 start-50 translate-middle-x mt-5" style="z-index: 10000">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% for category, message in messages %}
-            {% if category == 'message' %}
-                {% set category = 'primary' %}
-            {% endif %}
-            {% if category == 'danger' %}
-                {% set name = 'error' %}
-            {% elif category == 'primary' %}
-                {% set name = None %}
-            {% else %}
-                {% set name = category %}
-            {% endif %}
-            <div class="alert alert-{{ category }} alert-dismissible fade show text-center" id="alert" role="alert">
-                {% if name is not none and name != '' %}
-                    <strong class="me-2">{{ name | capitalize }}!</strong>
-                {% endif %}
-                {{ message | safe }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endwith %}
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% for category, message in messages %}
+{% if category == 'message' %}
+    {% set category = 'primary' %}
+{% endif %}
+{% if category == 'danger' %}
+    {% set name = 'error' %}
+{% elif category == 'primary' %}
+    {% set name = None %}
+{% else %}
+    {% set name = category %}
+{% endif %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show text-center" id="alert" role="alert">
+{% if name is not none and name != '' %}
+        <strong class="me-2">{{ name | capitalize }}!</strong>
+{% endif %}
+        {{ message | safe }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+{% endfor %}
+{% endwith %}
 </div>
 
 <main class="flex-fill d-flex">
@@ -137,29 +135,27 @@
 </main>
 
 {% if session.get('terminal', False) == False %}
-    <footer class="footer py-3 bg-light flex-grow-0 flex-shrink-0">
-        <div class="container">
-            <div class="row">
-                <div class="col-auto text-muted">Version {{ version }}.</div>
-                <div class="col-auto text-muted">Build with <i class="fa-solid fa-heart"></i> & <i
-                        class="fa-solid fa-mug-hot"></i> by <a href="https://twitter.com/dominikrimpf" target="_blank">domrim</a>.
-                </div>
-                <div class="col-auto text-muted">Released under the <a
-                        href="https://gitlab.com/domrim/nanposweb/-/blob/main/LICENSE" target="_blank">MIT License</a>.
-                </div>
-                <div class="col-auto text-muted">Code availiable on <a href="https://gitlab.com/domrim/nanposweb"
-                                                                       target="_blank">Gitlab</a>.
-                </div>
+<footer class="footer py-3 bg-light flex-grow-0 flex-shrink-0">
+    <div class="container">
+        <div class="row">
+            <div class="col-auto text-muted">Version {{ version }}.</div>
+            <div class="col-auto text-muted">Build with <i class="fa-solid fa-heart"></i> & <i class="fa-solid fa-mug-hot"></i> by <a href="https://dgc.social/@domrim" target="_blank">domrim</a>.
+            </div>
+            <div class="col-auto text-muted">Released under the <a
+                    href="https://gitlab.com/domrim/nanposweb/-/blob/main/LICENSE" target="_blank">MIT License</a>.
+            </div>
+            <div class="col-auto text-muted">Code availiable on <a href="https://gitlab.com/domrim/nanposweb"
+                                                                   target="_blank">Gitlab</a>.
             </div>
         </div>
-    </footer>
+    </div>
+</footer>
 {% endif %}
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.3.0/js/fontawesome.min.js"
-        integrity="sha256-Mag3WtYiA/1P91Qduc1FKNy/peKn5ptB8b7v7GFu5qQ=" crossorigin="anonymous"></script>
-<script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha256-CDOy6cOibCWEdsRiZuaHf8dSGGJRYuBGC+mjoJimHGw=" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.5.2/js/all.min.js"
+        integrity="sha256-ShtKaqIDL7Iv2AJqPcHXS/s6kjSFvbypN5bRIlKTIk4=" crossorigin="anonymous"></script><script>
     document.addEventListener("DOMContentLoaded", function () {
         let alertNodes = document.querySelectorAll('#alert')
         let timeout = 4000
@@ -173,15 +169,17 @@
     })
 </script>
 {% if session.get('terminal', False) and request.endpoint != 'auth.login' and config.TERMINAL_LOGOUT_TIMEOUT is not none %}
-    <script>
-        document.addEventListener("DOMContentLoaded", function () {
-            let target = "{{ url_for('auth.logout') }}"
-            let timeout = {{ (config.TERMINAL_LOGOUT_TIMEOUT | int) * 1000 }}
-                setTimeout(function () {
-                    window.location.href = target
-                }, timeout)
-        })
-    </script>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        let target = "{{ url_for('auth.logout') }}"
+        let timeout = {{ (config.TERMINAL_LOGOUT_TIMEOUT | int) * 1000 }}
+            setTimeout(function () {
+                window.location.href = target
+            }, timeout)
+    })
+</script>
 {% endif %}
+{% block script %}
+{% endblock %}
 </body>
 </html>

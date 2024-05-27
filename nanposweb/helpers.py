@@ -1,4 +1,5 @@
 from hashlib import sha256
+from typing import Optional
 
 from flask import current_app, session
 from flask_login import current_user
@@ -23,7 +24,7 @@ def calc_hash(value: str) -> str:
     return sha256(value.encode('utf-8')).hexdigest()
 
 
-def get_user_id() -> int:
+def get_user_id() -> Optional[int]:
     impersonate_user_id = session.get('impersonate', None)
     return impersonate_user_id if impersonate_user_id is not None else current_user.id
 

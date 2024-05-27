@@ -1,36 +1,82 @@
 {% extends 'base.html' %}
+{% if current_user.is_authenticated %}
+{% set subject = current_user.name %}
+{% set amount = (get_balance(current_user.id) | abs) if get_balance(current_user.id) < 0 else 1000 %}
+{% else %}
+{% set subject = 'YOUR NAME' %}
+{% set amount = 1000 %}
+{% endif %}
 
 {% block pagetitle %}Bank Account{% endblock %}
 
 {% block content %}
-    {% if bank_data is not none %}
-        <div class="row justify-content-center py-3">
-            <div class="col-12 col-xl-6">
-                <table class="table">
-                    {% for key, val in bank_data.items() %}
-                        <tr>
-                            <th scope="row">{{ key }}</th>
-                            <td>{{ val }}</td>
-                        </tr>
-                    {% endfor %}
-                    {% if current_user.is_authenticated %}
-                        <tr>
-                            <th scope="row">Reason for payment</th>
-                            <td>{{ current_user.name }}</td>
-                        </tr>
-                    {% else %}
-                        <tr>
-                            <th scope="row">Reason for payment</th>
-                            <td>YOUR NAME</td>
-                        </tr>
-                    {% endif %}
-                </table>
-            </div>
+{% if bank_data is not none %}
+    <div class="row justify-content-center py-3">
+        <div class="col-12 col-xl-6">
+            <table class="table">
+{% for key, val in bank_data.items() %}
+                    <tr>
+                        <th scope="row">{{ key }}</th>
+                        <td>{{ val }}</td>
+                    </tr>
+{% endfor %}
+                    <tr>
+                        <th scope="row">Amount</th>
+                        <td>{{ amount | format_currency }}</td>
+                    </tr>
+                    <tr>
+                        <th scope="row">Reason for payment</th>
+                        <td>{{ subject }}</td>
+                    </tr>
+            </table>
         </div>
-        <div class="row justify-content-center py-3">
-            <div class="col-12 col-xl-6">
-                <p>To top up your Account transfer your wanted amount to the Account provided above.</p>
-            </div>
+    </div>
+    <div class="row py-3 row-gap-3 justify-content-center">
+        <div class="col-12 d-flex justify-content-center">
+            <p style="text-align: center">To top up your Account transfer your wanted amount to the Account provided above.<br>You can also use the EPC-QR Code provided below.</p>
         </div>
-    {% endif %}
+        <div class="col-12 d-flex justify-content-center" id="qrcode"></div>
+    </div>
+{% endif %}
+{% endblock %}
+
+{% block script %}
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+{% if bank_data is not none %}
+<script type="application/javascript">
+let recipient = "{{ bank_data.Owner }}";
+let iban = "{{ bank_data.IBAN }}";
+let bic = "{{ bank_data.BIC }}";
+let credit_institute = "{{ bank_data.Bank }}";
+let subject = "{{ subject }}";
+let amount = {{ amount }} / 100;
+let qr_code_text = `BCD
+002
+1
+SCT
+${bic}
+${recipient}
+${iban}
+EUR${amount.toFixed(2)}
+
+
+${subject}
+
+`;
+
+function createEPCQR(qr_obj) {
+    return ;
+}
+
+document.addEventListener("DOMContentLoaded", function () {
+    var qrcode = new QRCode(
+        document.getElementById("qrcode"),
+        {
+            text: qr_code_text,
+            correctLevel: QRCode.CorrectLevel.H,
+        }
+    );
+});
+</script>
+{% endif %}
 {% endblock %}

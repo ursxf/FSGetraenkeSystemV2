@@ -1,6 +1,7 @@
-from flask import Blueprint, Response, current_app, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from flask_principal import AnonymousIdentity, Identity, identity_changed
+from werkzeug.wrappers import Response
 
 from .db.models import User
 from .forms import LoginForm

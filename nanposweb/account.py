@@ -1,9 +1,10 @@
-from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from werkzeug.wrappers import Response
 from wtforms.validators import InputRequired
 
 from .db import db
-from .db.helpers import get_balance, revenue_query
+from .db.helpers import revenue_query
 from .forms import CardForm, PinForm
 from .helpers import calc_hash, check_hash
 
@@ -13,10 +14,9 @@ account_bp = Blueprint('account', __name__, url_prefix='/account')
 @account_bp.route('/revenues')
 @login_required
 def revenues() -> str:
-    balance = get_balance(current_user.id)
     revenues_query = revenue_query(current_user.id)
     revenues_result = db.session.execute(revenues_query).all()
-    return render_template('account/index.html', balance=balance, revenues=revenues_result)
+    return render_template('account/index.html', revenues=revenues_result)
 
 
 @account_bp.route('/pin', methods=['GET', 'POST'])

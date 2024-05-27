@@ -1,5 +1,6 @@
-from flask import Blueprint, Response, flash, redirect, render_template, url_for
+from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import login_required
+from werkzeug.wrappers import Response
 
 from .forms import ProductForm
 from .helpers import admin_permission

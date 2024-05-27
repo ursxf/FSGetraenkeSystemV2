@@ -6,9 +6,9 @@ authors = ["Dominik Rimpf <dev@drimpf.de>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = "^3.9"
 psycopg2 = "^2.9.5"
-Flask = "^2.2.3"
+Flask = "^3.0.3"
 Flask-SQLAlchemy = "^3.0.3"
 Flask-Login = "^0.6.2"
 Flask-WTF = "^1.1.1"
@@ -16,7 +16,7 @@ Flask-Principal = "^0.4.0"
 
 [tool.poetry.group.lint.dependencies]
 bandit = {extras = ["toml"], version = "^1.7.4"}
-ruff = "^0.1.7"
+ruff = "^0.4.5"
 mypy = "^0.991"
 types-wtforms = "^3.1.0.2" # for mypy
 
@@ -28,7 +28,7 @@ exclude = ["build", ".venv"]
 line-length = 128
 indent-width = 2
 
-target-version = "py311"
+target-version = "py39"
 
 show-fixes = true
 fix = false
@@ -55,8 +55,7 @@ inline-quotes = "single"
 quote-style = "single"
 
 [tool.mypy]
-python_version = "3.11"
-warn_return_any = true
+python_version = "3.9"
 warn_unused_configs = true
 
 [[tool.mypy.overrides]]
