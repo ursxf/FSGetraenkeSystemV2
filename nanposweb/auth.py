@@ -1,3 +1,5 @@
+from typing import Union
+
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from flask_principal import AnonymousIdentity, Identity, identity_changed
@@ -11,7 +13,7 @@ auth_bp = Blueprint('auth', __name__)
 
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
-def login() -> Response | str:
+def login() -> Union[Response, str]:
     if current_user.is_authenticated:
         flash('Already logged in.')
         return redirect(request.args.get('next') or url_for('main.index'))
@@ -23,11 +25,11 @@ def login() -> Response | str:
         if form.validate_on_submit():
             user = User.query.filter_by(name=form.username.data).one_or_none()
 
-            if user and check_hash(user.pin, form.pin.data):
+            if user and check_hash(user.pin, form.pin.data or ''):
                 login_user(user, remember=form.remember.data)
                 flash('Logged in', category='success')
 
-                identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))
+                identity_changed.send(current_app._get_current_object(), identity=Identity(user.id))  # type: ignore
 
                 return redirect(request.args.get('next') or url_for('main.index'))
 
@@ -50,7 +52,7 @@ def logout() -> Response:
     session.pop('impersonate', None)  # remove impersonation status to avoid weird behaviours
 
     # Tell Flask-Principal the user is anonymous
-    identity_changed.send(current_app._get_current_object(), identity=AnonymousIdentity())
+    identity_changed.send(current_app._get_current_object(), identity=AnonymousIdentity())  # type: ignore
     flash('Logged out')
 
     if session.get('terminal', False):

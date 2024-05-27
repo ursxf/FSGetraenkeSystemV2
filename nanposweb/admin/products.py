@@ -1,3 +1,5 @@
+from typing import Union
+
 from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import login_required
 from werkzeug.wrappers import Response
@@ -21,7 +23,7 @@ def index() -> str:
 @products_bp.route('/', methods=['POST'])
 @login_required
 @admin_permission.require(http_exception=401)
-def post() -> Response | str:
+def post() -> Union[Response, str]:
     form = ProductForm()
     if not form.validate_on_submit():
         flash('Submitted form was not valid!', category='danger')

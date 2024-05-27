@@ -1,6 +1,7 @@
 import contextlib
 from importlib import metadata
 from pathlib import Path
+from typing import Optional
 
 from flask import Flask, flash, redirect, session, url_for
 from flask_login import LoginManager, current_user
@@ -17,7 +18,7 @@ from .helpers import format_currency, get_user_id
 from .main import main_bp
 
 
-def create_app(test_config: dict | None = None) -> Flask:  # noqa: C901
+def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
     # create and configure the nanposweb_app
     nanposweb_app = Flask(__name__, instance_relative_config=True)
     nanposweb_app.config.from_mapping(

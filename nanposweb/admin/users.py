@@ -1,3 +1,5 @@
+from typing import Union
+
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import login_required
 from werkzeug.wrappers import Response
@@ -29,7 +31,7 @@ def index() -> str:
 @users_bp.route('/', methods=['POST'])
 @login_required
 @admin_permission.require(http_exception=401)
-def post() -> Response | str:
+def post() -> Union[Response, str]:
     form = UserForm()
     if not form.validate_on_submit():
         flash('Submitted form was not valid!', category='danger')
@@ -46,12 +48,12 @@ def post() -> Response | str:
 
     if form.unset_pin.data:
         user.pin = None
-    elif form.pin.data != '':
+    elif form.pin.data:
         user.pin = calc_hash(form.pin.data)
 
     if form.unset_card.data:
         user.card = None
-    elif form.card.data != '':
+    elif form.card.data:
         user.card = calc_hash(form.card.data)
 
     if create:
@@ -84,12 +86,12 @@ def pop_impersonate() -> Response:
 @users_bp.route('/balance/<user_id>', methods=['GET', 'POST'])
 @login_required
 @admin_permission.require(http_exception=401)
-def balance(user_id: int) -> Response | str:
+def balance(user_id: int) -> Union[Response, str]:
     user = User.query.get(user_id)
     form = BalanceForm()
 
     if request.method == 'POST':
-        if form.validate_on_submit():
+        if form.validate_on_submit() and form.amount.data:
             euros = form.amount.data
             cents = int(euros * 100)
 

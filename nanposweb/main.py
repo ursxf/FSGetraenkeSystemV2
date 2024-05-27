@@ -105,7 +105,12 @@ def index_post() -> Response:
 def quick_cancel() -> Response:
     user_id = get_user_id()
     last_buy_query = revenue_query(user_id)
-    last_revenue, last_revenue_product_name = db.session.execute(last_buy_query).first()
+    result = db.session.execute(last_buy_query).first()
+    if result is None:
+        flash('No revenue was found.', category='danger')
+        return redirect(url_for('main.index'))
+
+    last_revenue, last_revenue_product_name = result
 
     if revenue_is_cancelable(last_revenue):
         db.session.delete(last_revenue)

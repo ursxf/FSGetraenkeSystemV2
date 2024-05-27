@@ -24,16 +24,16 @@ def calc_hash(value: str) -> str:
     return sha256(value.encode('utf-8')).hexdigest()
 
 
-def get_user_id() -> Optional[int]:
+def get_user_id() -> int:
     impersonate_user_id = session.get('impersonate', None)
     return impersonate_user_id if impersonate_user_id is not None else current_user.id
 
 
-def revenue_is_cancelable(revenue: Revenue | None) -> bool:
+def revenue_is_cancelable(revenue: Optional[Revenue]) -> bool:
     if revenue is None:
         return False
 
-    if revenue.age.total_seconds() < current_app.config.get('QUICK_CANCEL_SEC'):
+    if revenue.age.total_seconds() < current_app.config.get('QUICK_CANCEL_SEC', 0):
         return True
 
     return False

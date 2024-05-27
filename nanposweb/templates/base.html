@@ -163,7 +163,7 @@
         alertNodes.forEach(function (node, i) {
             let alert = new bootstrap.Alert(node)
             setTimeout(function () {
-                alert.close()
+                try {alert.close()} catch (err) {}
             }, (timeout + i * additionalTimeout))
         })
     })

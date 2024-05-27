@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from flask_login import UserMixin
 
@@ -34,6 +34,6 @@ class Revenue(db.Model):  # type: ignore # until https://github.com/python/mypy/
     date = db.Column('date', db.TIMESTAMP(timezone=True), server_default=db.func.now())
 
     @property
-    def age(self) -> datetime:
+    def age(self) -> timedelta:
         date_naive = self.date.replace(tzinfo=None)
         return datetime.now() - date_naive
