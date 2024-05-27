@@ -34,7 +34,7 @@ def create_app(test_config: dict | None = None) -> Flask:  # noqa: C901
     )
     if nanposweb_app.debug:
         nanposweb_app.config.from_mapping(
-            SECRET_KEY='debug',  # noqa: S106 nosec
+            SECRET_KEY='debug',  # nosec B106 # noqa: S106
             TESTING=True,
             SESSION_COOKIE_SAMESITE=None,
             SESSION_COOKIE_SECURE=False,
