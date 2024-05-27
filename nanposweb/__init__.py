@@ -49,6 +49,8 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
         # load the test config if passed in
         nanposweb_app.config.from_mapping(test_config)
 
+    nanposweb_app.config.from_prefixed_env()
+
     # ensure the instance folder exists
     with contextlib.suppress(OSError):
         Path(nanposweb_app.instance_path).mkdir(parents=True)
