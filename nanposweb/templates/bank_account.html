@@ -76,7 +76,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let input = document.getElementById("amount")
     input.addEventListener("input", function () {
-        amount = this.valueAsNumber
+        amount = Math.abs(this.valueAsNumber)
         qrcode.makeCode(qrCodeText(amount))
     })
 });
