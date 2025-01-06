@@ -19,7 +19,7 @@ def impersonate() -> dict:
     if current_user.is_authenticated:
         impersonate_user_id = session.get('impersonate', None)
         impersonate_user = User.query.get(impersonate_user_id) if impersonate_user_id is not None else None
-        user_name = impersonate_user.name if impersonate_user_id else current_user.name
+        user_name = impersonate_user.name if (impersonate_user_id and impersonate_user is not None) else current_user.name
         return {'impersonate_user': impersonate_user, 'user_name': user_name}
     return {}
 
@@ -37,18 +37,32 @@ def index() -> str:
         last_revenue_cancelable = revenue_is_cancelable(last_revenue)
 
     most_buyed_timestamp = datetime.datetime.now() - datetime.timedelta(days=current_app.config['FAVORITES_DAYS'])
-    most_buyed_query = db.select(Product, db.func.count(Revenue.product).label('CTR')).join(Product).where(
-        Revenue.product is not None).where(Revenue.user == user_id).where(
-        Revenue.date >= most_buyed_timestamp).where(Product.visible).group_by(Product.id).order_by(db.desc('CTR'))
+    most_buyed_query = (
+        db.select(Product, db.func.count(Revenue.product).label('CTR'))
+        .join(Product)
+        .where(Revenue.product is not None)
+        .where(Revenue.user == user_id)
+        .where(Revenue.date >= most_buyed_timestamp)
+        .where(Product.visible)
+        .group_by(Product.id)
+        .order_by(db.desc('CTR'))
+    )
     most_buyed = db.session.execute(most_buyed_query).all()
-    favorites = [f[0] for f in most_buyed[:current_app.config.get('FAVORITES_DISPLAY')]]
+    favorites = [f[0] for f in most_buyed[: current_app.config.get('FAVORITES_DISPLAY')]]
 
     view_all = request.args.get('view_all', False, type=bool)
     form = MainForm()
     products = Product.query.order_by(Product.name).all()
-    return render_template('index.html', products=products, form=form, view_all=view_all,
-                           favorites=favorites, last_revenue=last_revenue, last_revenue_cancelable=last_revenue_cancelable,
-                           last_revenue_product_name=last_revenue_product_name)
+    return render_template(
+        'index.html',
+        products=products,
+        form=form,
+        view_all=view_all,
+        favorites=favorites,
+        last_revenue=last_revenue,
+        last_revenue_cancelable=last_revenue_cancelable,
+        last_revenue_product_name=last_revenue_product_name,
+    )
 
 
 @main_bp.route('/', methods=['POST'])
@@ -115,13 +129,14 @@ def quick_cancel() -> Response:
     if revenue_is_cancelable(last_revenue):
         db.session.delete(last_revenue)
         db.session.commit()
-        flash(f'Canceled revenue: {last_revenue_product_name} for {format_currency(last_revenue.amount)}',
-              category='success')
+        flash(f'Canceled revenue: {last_revenue_product_name} for {format_currency(last_revenue.amount)}', category='success')
     else:
-        flash(f'Could not cancel revenue: {last_revenue_product_name} for {format_currency(last_revenue.amount)}'
-              f'</br> because its too old:'
-              f' {round(last_revenue.age.total_seconds())}s > {current_app.config.get("QUICK_CANCEL_SEC")}s',
-              category='danger')
+        flash(
+            f'Could not cancel revenue: {last_revenue_product_name} for {format_currency(last_revenue.amount)}'
+            f'</br> because its too old:'
+            f' {round(last_revenue.age.total_seconds())}s > {current_app.config.get("QUICK_CANCEL_SEC")}s',
+            category='danger',
+        )
 
     return redirect(url_for('main.index'))
 

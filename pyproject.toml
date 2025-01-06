@@ -30,7 +30,6 @@ exclude = ["build", ".venv"]
 
 # 80 chars aren't enough in 21 century
 line-length = 128
-indent-width = 2
 
 show-fixes = true
 fix = false

@@ -37,7 +37,7 @@ def post() -> Union[Response, str]:
             price=form.price.data,
             visible=form.visible.data,
             has_alc=form.has_alc.data,
-            is_food=form.is_food.data
+            is_food=form.is_food.data,
         )
         db.session.add(new)
         db.session.commit()

@@ -10,5 +10,9 @@ def get_balance(user_id: int) -> int:
 
 
 def revenue_query(user_id: int) -> sqlalchemy.sql.selectable.Select:
-    return db.select(Revenue, db.func.coalesce(Product.name, '')).outerjoin(
-        Product, Revenue.product == Product.id).where(Revenue.user == user_id).order_by(db.desc(Revenue.date))
+    return (
+        db.select(Revenue, db.func.coalesce(Product.name, ''))
+        .outerjoin(Product, Revenue.product == Product.id)
+        .where(Revenue.user == user_id)
+        .order_by(db.desc(Revenue.date))
+    )

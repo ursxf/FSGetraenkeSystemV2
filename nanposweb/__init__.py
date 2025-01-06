@@ -66,8 +66,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
     @login_manager.unauthorized_handler
     def unauthorized() -> Response:
         if login_manager.localize_callback is not None:
-            flash(login_manager.localize_callback(login_manager.login_message),
-                  category=login_manager.login_message_category)
+            flash(login_manager.localize_callback(login_manager.login_message), category=login_manager.login_message_category)
         else:
             flash(login_manager.login_message, category=login_manager.login_message_category)
 

@@ -18,12 +18,14 @@ users_bp = Blueprint('users', __name__, url_prefix='/users')
 @login_required
 @admin_permission.require(http_exception=401)
 def index() -> str:
-    aggregation = db.select(db.func.sum(Revenue.amount).label('balance'), Revenue.user.label('user_id')).group_by(
-        Revenue.user).subquery()
-    user_query = db.select(User, db.func.coalesce(aggregation.c.balance, 0)).outerjoin(
-        aggregation,
-        User.id == aggregation.c.user_id
-    ).order_by(User.name)
+    aggregation = (
+        db.select(db.func.sum(Revenue.amount).label('balance'), Revenue.user.label('user_id')).group_by(Revenue.user).subquery()
+    )
+    user_query = (
+        db.select(User, db.func.coalesce(aggregation.c.balance, 0))
+        .outerjoin(aggregation, User.id == aggregation.c.user_id)
+        .order_by(User.name)
+    )
     users_list = db.session.execute(user_query).all()
     return render_template('users/index.html', users=users_list)
 
@@ -138,11 +140,7 @@ def add() -> str:
 @admin_permission.require(http_exception=401)
 def edit(user_id: int) -> str:
     user = User.query.get(user_id)
-    form = UserForm(
-        id=user.id,
-        name=user.name,
-        isop=user.isop
-    )
+    form = UserForm(id=user.id, name=user.name, isop=user.isop)
 
     return render_template('users/form.html', form=form, edit=True)
 
