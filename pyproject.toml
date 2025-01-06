@@ -7,7 +7,7 @@ authors = [
 ]
 license = {text = "MIT"}
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 
 dependencies = [
   "psycopg2~=2.9.10",
