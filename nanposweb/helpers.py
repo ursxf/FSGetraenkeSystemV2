@@ -14,10 +14,7 @@ def format_currency(value: int, factor: int = 100) -> str:
 def check_hash(hash_to_check: str, value: str) -> bool:
     hashed_value = sha256(value.encode('utf-8')).hexdigest()
 
-    if hash_to_check == hashed_value:
-        return True
-
-    return False
+    return hash_to_check == hashed_value
 
 
 def calc_hash(value: str) -> str:
@@ -33,7 +30,4 @@ def revenue_is_cancelable(revenue: Optional[Revenue]) -> bool:
     if revenue is None:
         return False
 
-    if revenue.age.total_seconds() < current_app.config.get('QUICK_CANCEL_SEC', 0):
-        return True
-
-    return False
+    return revenue.age.total_seconds() < current_app.config.get('QUICK_CANCEL_SEC', 0)

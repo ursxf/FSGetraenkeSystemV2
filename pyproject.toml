@@ -1,24 +1,28 @@
-[tool.poetry]
+[project]
 name = "nanposweb"
 version = "0.22.1"
 description = ""
-authors = ["Dominik Rimpf <dev@drimpf.de>"]
-license = "MIT"
+authors = [
+    {name = "Dominik Rimpf", email = "dev@drimpf.de"}
+]
+license = {text = "MIT"}
+readme = "README.md"
+requires-python = ">=3.9"
 
-[tool.poetry.dependencies]
-python = "^3.9"
-psycopg2 = "^2.9.5"
-Flask = "^3.0.3"
-Flask-SQLAlchemy = "^3.0.3"
-Flask-Login = "^0.6.2"
-Flask-WTF = "^1.1.1"
-Flask-Principal = "^0.4.0"
+dependencies = [
+  "psycopg2~=2.9.10",
+  "flask~=3.1.0",
+  "flask-sqlalchemy~=3.1.1",
+  "flask-login~=0.6.3",
+  "flask-wtf~=1.2.2",
+  "flask-principal~=0.4.0"
+]
 
 [tool.poetry.group.lint.dependencies]
-bandit = {extras = ["toml"], version = "^1.7.4"}
-ruff = "^0.4.5"
-mypy = "^1.10.0"
-types-WTForms = "^3.1.0.20240425" # for mypy
+ruff = "^0.8.6"
+mypy = "^1.14.1"
+bandit = {extras = ["toml"], version = "^1.8.0"}
+types-wtforms = "^3.2.1.20241221"
 
 [tool.ruff]
 # Ignore build and venv directory
@@ -28,17 +32,14 @@ exclude = ["build", ".venv"]
 line-length = 128
 indent-width = 2
 
-target-version = "py39"
-
 show-fixes = true
 fix = false
 
 [tool.ruff.lint]
 select = ["F", "E", "W", "C90", "I", "N", "UP", "ANN", "S", "B", "A", "C4", "G", "PIE", "T20", "PYI", "PT", "Q", "RET", "SIM", "PTH", "RUF"]
-# ANN101,ANN102: flake8-annotations, anotations for self and cls
 # S101: flake8-bandit forbids asserts
 # UP007: ignore modern typehints until https://github.com/tiangolo/typer/issues/533 is fixed
-ignore = ["ANN101", "ANN102", "S101", "UP007"]
+ignore = ["S101", "UP007"]
 
 [tool.ruff.lint.isort]
 relative-imports-order = "closest-to-furthest"
@@ -70,5 +71,5 @@ ignore_missing_imports = true
 exclude_dirs = ["tests", ".venv"]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
