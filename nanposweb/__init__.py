@@ -6,7 +6,10 @@ from typing import Optional
 from flask import Flask, flash, redirect, session, url_for
 from flask_login import LoginManager, current_user
 from flask_principal import Principal, RoleNeed, UserNeed, identity_loaded
+from prometheus_flask_exporter import PrometheusMetrics
 from werkzeug.wrappers import Response
+
+from nanposweb.metrics import metrics_bp
 
 from .account import account_bp
 from .admin import admin_bp
@@ -56,6 +59,8 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
         Path(nanposweb_app.instance_path).mkdir(parents=True)
 
     db.init_app(nanposweb_app)
+
+    PrometheusMetrics(nanposweb_app, path=None)
 
     Principal(nanposweb_app)
 
@@ -125,6 +130,9 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
 
     # blueprint for admin parts of nanposweb_app
     nanposweb_app.register_blueprint(admin_bp)
+
+    # blueprint for prometheus metrics
+    nanposweb_app.register_blueprint(metrics_bp)
 
     return nanposweb_app
 
