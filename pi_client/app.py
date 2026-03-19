@@ -11,17 +11,20 @@ State machine
 
 ::
 
-    idle ──(card detected)──► identify ──(regular user)──► user  ──(buy)──► success ──► idle
-                                          │                                              ▲
-                                          └──(admin user)──► admin ──(done/timeout)─────┘
-                              (error at any point)──► error ──(after 4 s)──► idle
+    idle ──(card detected)──► identify ──(any user)──► user ──(buy)──► success ──► idle
+                                         │             │                              ▲
+                                         │             └──(admin clicks admin menu)──► admin ──(back)──► user
+                                         │                                            └──(done/timeout)──► success ──► idle
+                                         └──(error at any point)──► error ──(after 4 s)──► idle
 
 Screens
 -------
 
 * **idle**    – "Karte antippen" splash; polls ``/api/state`` every 500 ms.
-* **user**    – product grid for the identified user.
-* **admin**   – list of users with balance-recharge controls.
+* **user**    – product grid for the identified user; admin users also see an
+                "Admin-Menu" button that leads to the admin screen.
+* **admin**   – list of users with balance-recharge controls; reached via the
+                "Admin-Menu" button on the user screen.
 * **success** – purchase confirmation; auto-redirects to idle after 3 s.
 * **error**   – error message; auto-redirects to idle after 4 s.
 
@@ -164,48 +167,35 @@ def _handle_card_scan(uid: str, client: NFCApiClient) -> None:
 
     is_admin: bool = user_info.get('is_admin', False)
 
-    if is_admin:
-        # Fetch user list for admin panel
+    # Always show the product grid first – admins get an extra button to open
+    # the admin panel from there.
+    with _state_lock:
+        cached_products = list(_state['products'])
+
+    if not cached_products:
         try:
-            users = client.get_users(uid)
+            cached_products = client.get_products()
         except APIError as exc:
-            _set_state(mode='error', message=f'Nutzerliste konnte nicht geladen werden: {exc}')
-            logger.warning('get_users failed: %s', exc)
+            _set_state(mode='error', message=f'Produkte konnten nicht geladen werden: {exc}')
+            logger.warning('get_products failed: %s', exc)
             return
 
-        _set_state(
-            mode='admin',
-            card_uid=uid,
-            user_id=user_info['user_id'],
-            user_name=user_info['name'],
-            balance=user_info['balance'],
-            is_admin=True,
-            users=users,
-        )
-        logger.info('Admin panel for %s', user_info['name'])
-    else:
-        # Fetch product list (use cached copy if available)
-        with _state_lock:
-            cached_products = list(_state['products'])
-
-        if not cached_products:
-            try:
-                cached_products = client.get_products()
-            except APIError as exc:
-                _set_state(mode='error', message=f'Produkte konnten nicht geladen werden: {exc}')
-                logger.warning('get_products failed: %s', exc)
-                return
-
-        _set_state(
-            mode='user',
-            card_uid=uid,
-            user_id=user_info['user_id'],
-            user_name=user_info['name'],
-            balance=user_info['balance'],
-            is_admin=False,
-            products=cached_products,
-        )
-        logger.info('Product screen for %s (balance: %d ct)', user_info['name'], user_info['balance'])
+    _set_state(
+        mode='user',
+        card_uid=uid,
+        user_id=user_info['user_id'],
+        user_name=user_info['name'],
+        balance=user_info['balance'],
+        is_admin=is_admin,
+        products=cached_products,
+        users=[],
+    )
+    logger.info(
+        '%s screen for %s (balance: %d ct)',
+        'Admin+Product' if is_admin else 'Product',
+        user_info['name'],
+        user_info['balance'],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -371,6 +361,43 @@ def admin_balance() -> Response:
 def reset() -> Response:
     """Manually reset to idle (e.g. user presses Cancel)."""
     _reset_to_idle()
+    return redirect(url_for('index'))
+
+
+@app.route('/admin')
+def admin_panel() -> Union[str, Response]:
+    """Open the admin panel for the currently identified admin user."""
+    with _state_lock:
+        is_admin = _state.get('is_admin', False)
+        admin_uid = _state.get('card_uid')
+
+    if not is_admin or not admin_uid:
+        return redirect(url_for('index'))
+
+    if _api_client is None:
+        return redirect(url_for('index'))
+
+    try:
+        users = _api_client.get_users(admin_uid)
+    except APIError as exc:
+        _set_state(mode='error', message=f'Nutzerliste konnte nicht geladen werden: {exc}')
+        logger.warning('get_users failed: %s', exc)
+        return redirect(url_for('index'))
+
+    _set_state(mode='admin', users=users)
+    return redirect(url_for('index'))
+
+
+@app.route('/admin/back')
+def admin_back() -> Response:
+    """Return from the admin panel to the product grid."""
+    with _state_lock:
+        is_admin = _state.get('is_admin', False)
+
+    if is_admin:
+        _set_state(mode='user')
+    else:
+        _reset_to_idle()
     return redirect(url_for('index'))
 
 
