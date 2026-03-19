@@ -1,0 +1,37 @@
+# Pi client configuration – copy this file to config.py and adjust values.
+
+# URL of the nanposweb server (no trailing slash)
+SERVER_URL = 'http://your-server:5000'
+
+# Shared secret – must match NFC_API_KEY in the server's instance/config.py.
+# Generate with: python -c "import secrets; print(secrets.token_urlsafe(32))"
+API_KEY = 'change-me'
+
+# ---- Display behaviour -------------------------------------------------
+
+# Seconds of inactivity before the screen returns to idle
+IDLE_TIMEOUT = 60
+
+# Port for the local Flask web server (browse to http://localhost:<PORT>)
+PORT = 8080
+
+# Pre-defined top-up amounts shown as quick buttons in the admin panel (euros)
+TOPUP_AMOUNTS = [5, 10, 15, 20]
+
+# ---- NFC reader --------------------------------------------------------
+
+# Set NFC_MOCK = True to simulate card scans without real hardware (testing)
+NFC_MOCK = False
+
+# UID returned by the mock reader (must be registered in the server DB)
+NFC_MOCK_UID = '04AABBCCDD'
+
+# Seconds between simulated card events in mock mode
+NFC_MOCK_DELAY = 3.0
+
+# Seconds between NFC polling attempts while idle
+NFC_POLL_INTERVAL = 0.3
+
+# nfcpy device path – 'usb' for first USB reader, e.g. 'usb:072f:2200' for a
+# specific device, 'tty:S0:pn532' for a PN532 on /dev/ttyS0.
+NFC_PATH = 'usb'

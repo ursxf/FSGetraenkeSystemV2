@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center flex-fill text-center p-4">
+    {% if mode == 'success' %}
+    <div class="display-1 mb-4">✅</div>
+    <h2 class="text-success fw-bold mb-3">Erfolgreich!</h2>
+    {% else %}
+    <div class="display-1 mb-4">❌</div>
+    <h2 class="text-danger fw-bold mb-3">Fehler</h2>
+    {% endif %}
+
+    <p class="fs-5 mb-4" style="white-space: pre-line;">{{ message }}</p>
+    <a href="/reset" class="btn btn-primary btn-lg">Zurück</a>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    /* Auto-return to idle after a short delay */
+    let delay = {{ 3000 if mode == 'success' else 5000 }};
+    setTimeout(() => {
+        fetch('/reset').then(() => { window.location.href = '/'; });
+    }, delay);
+</script>
+{% endblock %}

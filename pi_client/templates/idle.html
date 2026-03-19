@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex flex-column align-items-center justify-content-center flex-fill text-center p-4">
+    <div class="display-1 mb-4">📲</div>
+    <h1 class="display-4 fw-bold text-primary mb-3">Karte antippen</h1>
+    <p class="fs-5 text-muted">Halte deine NFC-Karte an den Leser, um ein Getränk zu kaufen.</p>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    /* Poll for state changes every 500 ms and navigate when something happens. */
+    let lastVersion = null;
+    setInterval(async () => {
+        try {
+            const resp = await fetch('/api/state');
+            const data = await resp.json();
+            if (lastVersion === null) { lastVersion = data.version; return; }
+            if (data.version !== lastVersion) {
+                window.location.href = '/';
+            }
+        } catch (_) {}
+    }, 500);
+</script>
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block header_right %}
+<div class="text-end">
+    <span class="fw-bold me-3">{{ user_name }}</span>
+    <span class="badge bg-light text-dark fs-6 me-3">{{ balance | fmt_currency }}</span>
+    <a href="/reset" class="btn btn-outline-light btn-sm">Abbrechen</a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-4 flex-fill d-flex flex-column">
+    <h2 class="mb-3">Getränk auswählen</h2>
+
+    {% if balance is not none and balance < 0 %}
+    <div class="alert alert-warning">
+        Dein Guthaben ist negativ. Bitte aufladen!
+    </div>
+    {% endif %}
+
+    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3 flex-fill">
+        {% for product in products %}
+        <div class="col">
+            <form method="post" action="/purchase">
+                <input type="hidden" name="product_id" value="{{ product.id }}">
+                <button type="submit"
+                        class="card card-product border-primary w-100 h-100 p-3 text-center btn btn-outline-primary">
+                    <div class="fw-bold fs-5 mb-1">{{ product.name }}</div>
+                    <div class="fs-price text-muted">{{ product.price | fmt_currency }}</div>
+                </button>
+            </form>
+        </div>
+        {% else %}
+        <div class="col-12 text-center text-muted">Keine Produkte verfügbar.</div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_script %}
+<script>
+    /* Auto-return to idle on timeout (server enforces it too, but keep UI in sync). */
+    let idleTimeout = 60000;
+    let timer = setTimeout(() => { window.location.href = '/'; }, idleTimeout);
+    document.addEventListener('click', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { window.location.href = '/'; }, idleTimeout);
+    });
+</script>
+{% endblock %}

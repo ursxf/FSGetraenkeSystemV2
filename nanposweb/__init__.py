@@ -16,6 +16,7 @@ from .db.helpers import get_balance
 from .db.models import User
 from .helpers import format_currency, get_user_id
 from .main import main_bp
+from .nfc_api import nfc_api_bp
 
 
 def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
@@ -32,6 +33,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
         BANK_DATA=None,
         FAVORITES_DISPLAY=3,  # Amount of favorite products which should get highlighted
         FAVORITES_DAYS=100,  # Timespan for calculation of favorite products in Days
+        NFC_API_KEY=None,  # Shared secret for Raspberry Pi NFC clients; set to a long random string to enable
     )
     if nanposweb_app.debug:
         nanposweb_app.config.from_mapping(
@@ -125,6 +127,9 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
 
     # blueprint for admin parts of nanposweb_app
     nanposweb_app.register_blueprint(admin_bp)
+
+    # blueprint for NFC reader API (used by Raspberry Pi clients)
+    nanposweb_app.register_blueprint(nfc_api_bp)
 
     return nanposweb_app
 
