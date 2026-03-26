@@ -336,6 +336,9 @@ def admin_balance() -> Response:
     with _state_lock:
         admin_uid = _state.get('card_uid')
         admin_name = _state.get('user_name', 'Admin')
+        users = _state.get('users', [])
+
+    user_name = next((u['name'] for u in users if u['id'] == user_id), f'Nutzer #{user_id}')
 
     if not admin_uid:
         _reset_to_idle()
@@ -353,7 +356,7 @@ def admin_balance() -> Response:
 
     action = 'aufgeladen' if recharge else 'abgebucht'
     msg = (
-        f'{admin_name}: {_fmt_currency(int(amount * 100))} {action}.\n'
+        f'{user_name} wurden {_fmt_currency(int(amount * 100))} durch {admin_name} {action}.\n'
         f'Neues Guthaben: {_fmt_currency(result["new_balance"])}'
     )
     _set_state(mode='success', message=msg)
