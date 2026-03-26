@@ -15,9 +15,9 @@
 <div class="container-fluid py-3 px-4 flex-fill d-flex flex-column">
     <h2 class="mb-3">Getränk auswählen</h2>
 
-    {% if balance is not none and balance < 0 %}
-    <div class="alert alert-warning">
-        Dein Guthaben ist negativ. Bitte aufladen!
+    {% if balance is not none and balance <= -3000 %}
+    <div class="alert alert-danger fs-4 fw-bold text-center shadow-sm">
+        Hey, du bist {{ (-balance) | fmt_currency }} im Negativen! Bitte zahl etwas in die Kasse ein.
     </div>
     {% endif %}
 
