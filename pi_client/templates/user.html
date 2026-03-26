@@ -27,8 +27,8 @@
             <form method="post" action="/purchase">
                 <input type="hidden" name="product_id" value="{{ product.id }}">
                 <button type="submit"
-                        class="card card-product border-primary w-100 h-100 p-3 text-center btn btn-outline-primary">
-                    <div class="fw-bold fs-5 mb-1">{{ product.name }}</div>
+                        class="card card-product w-100 h-100 p-3 text-center btn {% if product.id in favorites %}btn-outline-success border-success border-2{% else %}btn-outline-primary border-primary{% endif %}">
+                    <div class="fw-bold fs-5 mb-1">{% if product.id in favorites %}⭐ {% endif %}{{ product.name }}</div>
                     <div class="fs-price text-muted">{{ product.price | fmt_currency }}</div>
                 </button>
             </form>

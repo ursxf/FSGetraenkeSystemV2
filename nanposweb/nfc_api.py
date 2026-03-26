@@ -8,6 +8,7 @@ provided in the request body so the server can verify the identity without
 storing any session state.
 """
 
+import datetime
 from collections.abc import Callable
 from functools import wraps
 from typing import Any, Union
@@ -99,11 +100,26 @@ def identify() -> Response:
     if user is None:
         return jsonify({'error': 'Card not registered'}), 404  # type: ignore[return-value]
 
+    most_buyed_timestamp = datetime.datetime.now() - datetime.timedelta(days=current_app.config.get('FAVORITES_DAYS', 100))
+    most_buyed_query = (
+        db.select(Product, db.func.count(Revenue.product).label('CTR'))
+        .join(Product)
+        .where(Revenue.product is not None)
+        .where(Revenue.user == user.id)
+        .where(Revenue.date >= most_buyed_timestamp)
+        .where(Product.visible)
+        .group_by(Product.id)
+        .order_by(db.desc('CTR'))
+    )
+    most_buyed = db.session.execute(most_buyed_query).all()
+    favorites = [f[0].id for f in most_buyed[: current_app.config.get('FAVORITES_DISPLAY', 3)]]
+
     return jsonify({
         'user_id': user.id,
         'name': user.name,
         'is_admin': user.isop,
         'balance': get_balance(user.id),
+        'favorites': favorites,
     })
 
 

@@ -77,6 +77,7 @@ _state: dict[str, Any] = {
     'user_name': None,
     'balance': None,      # in cents
     'is_admin': False,
+    'favorites': [],      # [product_id, …]
     'products': [],       # [{id, name, price}, …]  (fetched once, cached)
     'users': [],          # [{id, name, balance}, …]  (admin only)
     'message': '',
@@ -102,6 +103,7 @@ def _reset_to_idle() -> None:
             'user_name': None,
             'balance': None,
             'is_admin': False,
+            'favorites': [],
             'products': [],
             'users': [],
             'message': '',
@@ -159,7 +161,7 @@ def _handle_card_scan(uid: str, client: NFCApiClient) -> None:
         user_info = client.identify(uid)
     except APIError as exc:
         if exc.status_code == 404:
-            _set_state(mode='error', message='Karte nicht registriert.')
+            _set_state(mode='error', message=f'Karte nicht registriert.\nKarten-ID: {uid}')
         else:
             _set_state(mode='error', message=f'Serverfehler: {exc}')
         logger.warning('identify failed for uid=%s: %s', uid, exc)
@@ -187,6 +189,7 @@ def _handle_card_scan(uid: str, client: NFCApiClient) -> None:
         user_name=user_info['name'],
         balance=user_info['balance'],
         is_admin=is_admin,
+        favorites=user_info.get('favorites', []),
         products=cached_products,
         users=[],
     )
