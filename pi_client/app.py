@@ -62,7 +62,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     'NFC_MOCK_DELAY': 3.0,
     'NFC_PATH': 'usb',
     # Pre-defined top-up amounts shown as quick buttons in the admin panel (euros)
-    'TOPUP_AMOUNTS': [5, 10, 15, 20],
+    'TOPUP_AMOUNTS': [10, 20, 30, 50],
 }
 
 # ---------------------------------------------------------------------------

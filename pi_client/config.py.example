@@ -16,7 +16,7 @@ IDLE_TIMEOUT = 60
 PORT = 8080
 
 # Pre-defined top-up amounts shown as quick buttons in the admin panel (euros)
-TOPUP_AMOUNTS = [5, 10, 15, 20]
+TOPUP_AMOUNTS = [10, 20, 30, 50]
 
 # ---- NFC reader --------------------------------------------------------
 
