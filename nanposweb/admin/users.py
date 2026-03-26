@@ -1,7 +1,7 @@
 from typing import Union
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
-from flask_login import login_required
+from flask_login import current_user, login_required
 from werkzeug.wrappers import Response
 
 from .forms import BalanceForm, UserForm
@@ -107,7 +107,7 @@ def balance(user_id: int) -> Union[Response, str]:
                 flash('Submitted form was not valid!', category='danger')
                 return render_template('users/balance.html', form=form, user=user)
 
-            rev = Revenue(user=user.id, product=None, amount=cents * factor)
+            rev = Revenue(user=user.id, product=None, amount=cents * factor, admin_id=current_user.id)
             db.session.add(rev)
             db.session.commit()
             return redirect(url_for('admin.users.index'))

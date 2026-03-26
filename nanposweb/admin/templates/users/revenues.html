@@ -26,10 +26,18 @@
         </tr>
         </thead>
         <tbody>
-        {% for revenue, product_name in revenues %}
+        {% for revenue, product_name, admin_name in revenues %}
             <tr>
                 <td>{{ revenue.date.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>{{ product_name }}</td>
+                <td>
+                    {% if product_name %}
+                        {{ product_name }}
+                    {% elif admin_name %}
+                        Guthabenaufladung (durch {{ admin_name }})
+                    {% else %}
+                        Aufladung / Abbuchung
+                    {% endif %}
+                </td>
                 <td class="text-end">{{ macro.render_currency(revenue.amount) }}</td>
             </tr>
         {% endfor %}

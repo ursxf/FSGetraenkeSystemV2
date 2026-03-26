@@ -30,6 +30,7 @@ class Revenue(db.Model):  # type: ignore # until https://github.com/python/mypy/
     id = db.Column('id', db.Integer, primary_key=True)
     user = db.Column('user', db.Integer, db.ForeignKey('users.id'), nullable=False)
     product = db.Column('product', db.Integer, db.ForeignKey('products.id'))
+    admin_id = db.Column('admin_id', db.Integer, db.ForeignKey('users.id'))
     amount = db.Column('amount', db.Integer, nullable=False)
     date = db.Column('date', db.TIMESTAMP(timezone=True), server_default=db.func.now())
 

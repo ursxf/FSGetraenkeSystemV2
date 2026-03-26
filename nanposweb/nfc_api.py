@@ -220,7 +220,8 @@ def admin_balance() -> Response:
     if not all(k in data for k in required_fields):
         return jsonify({'error': f'{", ".join(required_fields)} required'}), 400  # type: ignore[return-value]
 
-    if _get_admin_by_card(str(data['admin_card_uid'])) is None:
+    admin_user = _get_admin_by_card(str(data['admin_card_uid']))
+    if admin_user is None:
         return jsonify({'error': 'Admin card not recognized'}), 403  # type: ignore[return-value]
 
     user: User | None = User.query.get(data['user_id'])
@@ -230,7 +231,7 @@ def admin_balance() -> Response:
     amount_cents = int(float(data['amount']) * 100)
     factor = 1 if data.get('recharge', True) else -1
 
-    rev = Revenue(user=user.id, product=None, amount=amount_cents * factor)
+    rev = Revenue(user=user.id, product=None, amount=amount_cents * factor, admin_id=admin_user.id)
     db.session.add(rev)
     db.session.commit()
 
