@@ -2,3 +2,5 @@ flask>=3.0.0
 requests>=2.32.0
 # Uncomment the line below for real NFC hardware (ACR122U, PN532, …)
 # nfcpy>=1.0.4
+# Uncomment the line below for SPI connected RC522 Reader
+# mfrc522>=0.0.7

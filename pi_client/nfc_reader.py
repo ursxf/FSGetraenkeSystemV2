@@ -106,6 +106,49 @@ class MockNFCReader(NFCReader):
 
 
 # ---------------------------------------------------------------------------
+# SPI hardware reader (RC522)
+# ---------------------------------------------------------------------------
+
+
+class RC522Reader(NFCReader):
+    """NFC reader backed by mfrc522 for RC522 SPI modules."""
+
+    def __init__(self) -> None:
+        try:
+            from mfrc522 import SimpleMFRC522  # type: ignore[import-untyped]
+        except ImportError as exc:
+            raise ImportError(
+                'mfrc522 is required for RC522 NFC hardware. '
+                'Install it with: pip install mfrc522'
+            ) from exc
+
+        self._reader = SimpleMFRC522()
+        logger.info('RC522 NFC frontend opened via SPI')
+
+    def read_uid(self) -> Optional[str]:
+        try:
+            # read() blocks until a card is read
+            uid, _text = self._reader.read()
+            if uid:
+                # Convert the int UID back to an uppercase hex string
+                hex_uid = hex(uid)[2:].upper()
+                if len(hex_uid) % 2 != 0:
+                    hex_uid = '0' + hex_uid
+                return hex_uid
+        except Exception as e:
+            logger.error('Error reading from RC522: %s', e)
+        return None
+
+    def close(self) -> None:
+        try:
+            import RPi.GPIO as GPIO  # type: ignore[import-untyped]
+            GPIO.cleanup()
+            logger.info('RC522 NFC frontend closed and GPIO cleaned up')
+        except ImportError:
+            pass
+
+
+# ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
 
@@ -122,7 +165,8 @@ def build_reader(config: dict) -> NFCReader:  # type: ignore[type-arg]
     ``NFC_MOCK_DELAY``
         Seconds between mock card events (default: ``2.0``).
     ``NFC_PATH``
-        nfcpy device path (default: ``"usb"``).
+        nfcpy device path (default: ``"usb"``), or ``"rc522"`` for the
+        SPI-connected RC522 reader.
     """
     if config.get('NFC_MOCK', False):
         uid = config.get('NFC_MOCK_UID', '04AABBCCDD')
@@ -130,6 +174,11 @@ def build_reader(config: dict) -> NFCReader:  # type: ignore[type-arg]
         logger.info('Using mock NFC reader (uid=%s, delay=%.1fs)', uid, delay)
         return MockNFCReader(uid=uid, delay=delay)
 
-    path = config.get('NFC_PATH', 'usb')
+    path = str(config.get('NFC_PATH', 'usb'))
+    if path.lower() == 'rc522':
+        logger.info('Using RC522 SPI NFC reader')
+        return RC522Reader()
+
     logger.info('Using real NFC reader (path=%s)', path)
     return RealNFCReader(path=path)
+

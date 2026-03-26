@@ -34,4 +34,5 @@ NFC_POLL_INTERVAL = 0.3
 
 # nfcpy device path – 'usb' for first USB reader, e.g. 'usb:072f:2200' for a
 # specific device, 'tty:S0:pn532' for a PN532 on /dev/ttyS0.
+# Alternatively, use 'rc522' for an SPI-connected MFRC522 reader.
 NFC_PATH = 'usb'
