@@ -1,6 +1,6 @@
 [project]
 name = "nanposweb"
-version = "0.22.1"
+version = "0.23.0"
 description = ""
 authors = [
     {name = "Dominik Rimpf", email = "dev@drimpf.de"}

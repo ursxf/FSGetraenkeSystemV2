@@ -91,7 +91,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
             identity.provides.add(UserNeed(current_user.id))
 
         # Add the 'admin' RoleNeed to the identity
-        if hasattr(current_user, 'isop'):
+        if getattr(current_user, 'isop', False):
             identity.provides.add(RoleNeed('admin'))
 
     nanposweb_app.jinja_env.filters.update(
