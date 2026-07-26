@@ -63,6 +63,8 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     'NFC_PATH': 'usb',
     # Pre-defined top-up amounts shown as quick buttons in the admin panel (euros)
     'TOPUP_AMOUNTS': [10, 20, 30, 50],
+    'PIR_PIN': 17,
+    'DISPLAY_TIMEOUT': 120,
 }
 
 # ---------------------------------------------------------------------------
@@ -117,7 +119,7 @@ def _reset_to_idle() -> None:
 # ---------------------------------------------------------------------------
 
 
-def _nfc_worker(reader: NFCReader, client: NFCApiClient, config: dict[str, Any]) -> None:
+def _nfc_worker(reader: NFCReader, client: NFCApiClient, config: dict[str, Any], display_manager: Any = None) -> None:
     """Background thread: poll NFC reader and handle card events."""
     poll_interval = float(config.get('NFC_POLL_INTERVAL', 0.3))
     idle_timeout = float(config.get('IDLE_TIMEOUT', 60))
@@ -152,6 +154,8 @@ def _nfc_worker(reader: NFCReader, client: NFCApiClient, config: dict[str, Any])
             continue
 
         logger.info('Card detected: %s', uid)
+        if display_manager:
+            display_manager.wake()
         _handle_card_scan(uid, client)
 
 
@@ -426,10 +430,15 @@ def main() -> None:
     except APIError as exc:
         logger.warning('Could not pre-fetch products: %s', exc)
 
+    # Initialize DisplayManager
+    from display import DisplayManager
+    display_manager = DisplayManager(cfg.get('PIR_PIN'), int(cfg.get('DISPLAY_TIMEOUT', 120)))
+    display_manager.start()
+
     # Start NFC polling thread
     nfc_thread = threading.Thread(
         target=_nfc_worker,
-        args=(reader, client, cfg),
+        args=(reader, client, cfg, display_manager),
         daemon=True,
         name='nfc-worker',
     )
