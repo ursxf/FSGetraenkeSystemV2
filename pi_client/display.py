@@ -1,9 +1,11 @@
 """Display management via PIR sensor and X11 DPMS."""
 
 import logging
+import os
 import subprocess
 import threading
 import time
+import pwd
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -46,7 +48,19 @@ class DisplayManager:
     def _turn_on(self) -> None:
         logger.info('Waking up display')
         try:
-            # We explicitly pass the display environment variable
+            # Try Wayland (wlr-randr) first
+            env = os.environ.copy()
+            env.setdefault('WAYLAND_DISPLAY', 'wayland-1')
+            
+            # Setup XDG_RUNTIME_DIR for Wayland connection
+            uid = pwd.getpwnam(os.environ.get('USER', 'DrinkClient')).pw_uid
+            env.setdefault('XDG_RUNTIME_DIR', f'/run/user/{uid}')
+            
+            res = subprocess.run(['wlr-randr', '--output', 'HDMI-A-1', '--on'], env=env, check=False)
+            if res.returncode != 0:
+                # Fallback to X11 (xset)
+                subprocess.run(['xset', '-display', ':0', 'dpms', 'force', 'on'], check=False)
+        except FileNotFoundError:
             subprocess.run(['xset', '-display', ':0', 'dpms', 'force', 'on'], check=False)
         except Exception as e:
             logger.error('Failed to turn on display: %s', e)
@@ -54,8 +68,20 @@ class DisplayManager:
     def _turn_off(self) -> None:
         logger.info('Turning off display (timeout reached)')
         try:
-            # First ensure DPMS is enabled, as 'xset -dpms' in the setup script disables it,
-            # which might prevent 'force off' from working on some X servers.
+            # Try Wayland (wlr-randr) first
+            env = os.environ.copy()
+            env.setdefault('WAYLAND_DISPLAY', 'wayland-1')
+            
+            # Setup XDG_RUNTIME_DIR for Wayland connection
+            uid = pwd.getpwnam(os.environ.get('USER', 'DrinkClient')).pw_uid
+            env.setdefault('XDG_RUNTIME_DIR', f'/run/user/{uid}')
+            
+            res = subprocess.run(['wlr-randr', '--output', 'HDMI-A-1', '--off'], env=env, check=False)
+            if res.returncode != 0:
+                # Fallback to X11 (xset)
+                subprocess.run(['xset', '-display', ':0', '+dpms'], check=False)
+                subprocess.run(['xset', '-display', ':0', 'dpms', 'force', 'off'], check=False)
+        except FileNotFoundError:
             subprocess.run(['xset', '-display', ':0', '+dpms'], check=False)
             subprocess.run(['xset', '-display', ':0', 'dpms', 'force', 'off'], check=False)
         except Exception as e:

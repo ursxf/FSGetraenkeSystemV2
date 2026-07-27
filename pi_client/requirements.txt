@@ -5,3 +5,5 @@ gpiozero>=2.0.1
 # nfcpy>=1.0.4
 # Uncomment the line below for SPI connected RC522 Reader
 mfrc522>=0.0.7
+rpi-lgpio>=0.6
+spidev>=3.8

@@ -17,9 +17,12 @@ echo "  Installing system dependencies...     "
 echo "========================================"
 sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
-    xserver-xorg x11-xserver-utils xinit openbox \
-    chromium-browser \
-    libnfc-dev libusb-dev python3-venv python3-pip git
+    wayfire wlr-randr chromium \
+    libnfc-dev libusb-dev python3-venv python3-pip git \
+    liblgpio-dev python3-dev swig
+
+echo "Adding user to necessary hardware groups..."
+sudo usermod -a -G spi,gpio,video,render,input $USER
 
 echo "========================================"
 echo "  Setting up Python environment...      "
@@ -61,41 +64,30 @@ sudo systemctl daemon-reload
 sudo systemctl enable nanpos-client.service
 
 echo "========================================"
-echo "  Configuring Kiosk Mode...             "
+echo "  Configuring Kiosk Mode (Wayfire)...   "
 echo "========================================"
-mkdir -p "$USER_HOME/.config/openbox"
-cat << EOF > "$USER_HOME/.config/openbox/autostart"
-# Disable screensaver and blanking
-xset s off
-xset s noblank
-xset -dpms
+mkdir -p "$USER_HOME/.config"
+cat << EOF > "$USER_HOME/.config/wayfire.ini"
+[core]
+plugins = autostart
 
-# Hide mouse cursor if unclutter is installed (optional)
-# unclutter -idle 0.5 -root &
-
+[autostart]
 # Wait a few seconds to ensure the python app is up and running
-sleep 5
-
-# Start chromium in kiosk mode
-chromium-browser --noerrdialogs --disable-infobars --kiosk http://localhost:8080
+chromium = sh -c 'sleep 5 && chromium --noerrdialogs --disable-infobars --kiosk http://localhost:8080'
 EOF
+sudo chown -R $USER:$USER "$USER_HOME/.config"
 
-echo "Configuring X to start on login..."
-# create .bash_profile to start X on the first console
-if ! grep -q "startx" "$USER_HOME/.bash_profile" 2>/dev/null; then
+echo "Configuring Wayland to start on login..."
+# create .bash_profile to start Wayfire on the first console
+if ! grep -q "wayfire" "$USER_HOME/.bash_profile" 2>/dev/null; then
 cat << 'EOF' >> "$USER_HOME/.bash_profile"
 
-# Start X11 automatically on tty1
-if [[ -z $DISPLAY && $XDG_VTNR -eq 1 ]]; then
-  exec startx
+# Start Wayfire automatically on tty1
+if [[ -z \$WAYLAND_DISPLAY && \$XDG_VTNR -eq 1 ]]; then
+  exec wayfire
 fi
 EOF
 fi
-
-# .xinitrc to launch openbox
-cat << 'EOF' > "$USER_HOME/.xinitrc"
-exec openbox-session
-EOF
 
 echo "========================================"
 echo "  Configuring Raspberry Pi settings...  "
