@@ -4,4 +4,4 @@ gpiozero>=2.0.1
 # Uncomment the line below for real NFC hardware (ACR122U, PN532, …)
 # nfcpy>=1.0.4
 # Uncomment the line below for SPI connected RC522 Reader
-# mfrc522>=0.0.7
+mfrc522>=0.0.7
