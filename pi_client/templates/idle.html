@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div id="idleCarousel" class="carousel slide flex-fill d-flex w-100" data-bs-ride="carousel" data-bs-interval="10000">
-    <div class="carousel-inner flex-fill d-flex w-100">
+<div id="idleCarousel" class="carousel slide flex-fill w-100" data-bs-ride="carousel" data-bs-interval="10000">
+    <div class="carousel-inner h-100">
         
         <!-- Slide 1: NFC -->
-        <div class="carousel-item active flex-fill w-100">
+        <div class="carousel-item active h-100">
             <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center p-4">
                 <div class="mb-4 text-primary">
                     <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" fill="currentColor" class="bi bi-credit-card-2-front" viewBox="0 0 16 16">
@@ -20,7 +20,7 @@
 
         <!-- Slide 2: Calendar -->
         {% if upcoming_events %}
-        <div class="carousel-item flex-fill w-100">
+        <div class="carousel-item h-100">
             <div class="d-flex flex-column h-100 p-4 w-100 justify-content-center" style="max-width: 800px; margin: 0 auto;">
                 <h1 class="display-5 fw-bold text-primary mb-4 text-center">Anstehende Termine</h1>
                 <div class="list-group list-group-flush fs-5 overflow-hidden rounded-3 shadow-sm" style="max-height: 60vh; overflow-y: auto !important;">
