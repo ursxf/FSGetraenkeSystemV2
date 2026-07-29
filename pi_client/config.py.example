@@ -18,6 +18,12 @@ PORT = 8080
 # Pre-defined top-up amounts shown as quick buttons in the admin panel (euros)
 TOPUP_AMOUNTS = [10, 20, 30, 50]
 
+# List of calendars to display on the idle screen (as a slideshow)
+# Supported keys: 'url' (HTTP or file path to .ics), 'color' (CSS color or bootstrap class)
+CALENDARS = [
+    # {'url': 'https://example.com/kalender.ics', 'color': '#0d6efd', 'name': 'Verein'}
+]
+
 # ---- Display behaviour (Hardware) --------------------------------------
 
 # GPIO pin for a PIR motion sensor (e.g. 17). Set to None to disable.

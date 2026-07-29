@@ -7,3 +7,4 @@ gpiozero>=2.0.1
 mfrc522>=0.0.7
 rpi-lgpio>=0.6
 spidev>=3.8
+ics>=0.7.2

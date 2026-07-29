@@ -37,8 +37,10 @@ import importlib.util
 import logging
 import threading
 import time
+from datetime import datetime, timezone
 from typing import Any, Optional, Union
 
+import requests
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from werkzeug.wrappers import Response
 
@@ -63,6 +65,7 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     'NFC_PATH': 'usb',
     # Pre-defined top-up amounts shown as quick buttons in the admin panel (euros)
     'TOPUP_AMOUNTS': [10, 20, 30, 50],
+    'CALENDARS': [],
     'PIR_PIN': 17,
     'DISPLAY_TIMEOUT': 120,
 }
@@ -82,6 +85,7 @@ _state: dict[str, Any] = {
     'favorites': [],      # [product_id, …]
     'products': [],       # [{id, name, price}, …]  (fetched once, cached)
     'users': [],          # [{id, name, balance}, …]  (admin only)
+    'upcoming_events': [],# [{title, start, end, color, name}, …]
     'message': '',
     'last_activity': time.monotonic(),
     '_version': 0,        # incremented on every state change for polling
@@ -111,12 +115,69 @@ def _reset_to_idle() -> None:
             'message': '',
             'last_activity': time.monotonic(),
         })
+        # Keep upcoming_events unmodified on reset!
         _state['_version'] += 1
 
 
 # ---------------------------------------------------------------------------
-# NFC polling thread
+# Background threads
 # ---------------------------------------------------------------------------
+
+def _calendar_worker(config: dict[str, Any]) -> None:
+    """Background thread: periodically fetch and parse .ics calendars."""
+    import ics
+    
+    calendars = config.get('CALENDARS', [])
+    if not calendars:
+        return
+        
+    while True:
+        events = []
+        now = datetime.now(timezone.utc)
+        
+        for cal_config in calendars:
+            url = cal_config.get('url')
+            color = cal_config.get('color', '#0d6efd')
+            name = cal_config.get('name', 'Kalender')
+            
+            if not url:
+                continue
+                
+            try:
+                if url.startswith('http://') or url.startswith('https://'):
+                    r = requests.get(url, timeout=10)
+                    r.raise_for_status()
+                    cal = ics.Calendar(r.text)
+                else:
+                    # assume file path
+                    with open(url, 'r', encoding='utf-8') as f:
+                        cal = ics.Calendar(f.read())
+                        
+                for ev in cal.timeline:
+                    if ev.end > now: # Only upcoming or currently active events
+                        events.append({
+                            'title': ev.name,
+                            'start': ev.begin.datetime,
+                            'end': ev.end.datetime,
+                            'color': color,
+                            'name': name
+                        })
+            except Exception as e:
+                logger.warning('Failed to load calendar %s: %s', url, e)
+                
+        # Sort by start time, take next 10 events
+        events.sort(key=lambda x: x['start'])
+        upcoming = events[:10]
+        
+        with _state_lock:
+            _state['upcoming_events'] = upcoming
+            # We don't bump _version here to avoid triggering a reload on the client 
+            # while they are looking at the carousel, unless it's strictly necessary.
+            # Actually we can just update it silently, or bump version and frontend redraws.
+            # Bumping version on idle screen causes carousel reset. Let's just update silently.
+            
+        # Wait 15 minutes before checking again
+        time.sleep(15 * 60)
 
 
 def _nfc_worker(reader: NFCReader, client: NFCApiClient, config: dict[str, Any], display_manager: Any = None) -> None:
@@ -264,9 +325,10 @@ app.jinja_env.filters['fmt_currency'] = _fmt_currency  # type: ignore[assignment
 def index() -> Union[str, Response]:
     with _state_lock:
         mode = _state['mode']
+        upcoming_events = _state.get('upcoming_events', [])
 
     if mode == 'idle':
-        return render_template('idle.html')
+        return render_template('idle.html', upcoming_events=upcoming_events)
     if mode == 'user':
         with _state_lock:
             ctx = dict(_state)
@@ -444,6 +506,17 @@ def main() -> None:
     )
     nfc_thread.start()
     logger.info('NFC worker thread started')
+
+    # Start Calendar worker thread if configured
+    if cfg.get('CALENDARS'):
+        cal_thread = threading.Thread(
+            target=_calendar_worker,
+            args=(cfg,),
+            daemon=True,
+            name='cal-worker',
+        )
+        cal_thread.start()
+        logger.info('Calendar worker thread started')
 
     # Start Flask (blocks until Ctrl-C)
     app.run(
