@@ -127,8 +127,9 @@ class RC522Reader(NFCReader):
 
     def read_uid(self) -> Optional[str]:
         try:
-            # read() blocks until a card is read
-            uid, _text = self._reader.read()
+            # Use read_id_no_block to avoid infinite internal polling without sleep,
+            # which can lock up the SPI bus and the MFRC522 chip.
+            uid = self._reader.read_id_no_block()
             if uid:
                 # Convert the int UID back to an uppercase hex string
                 hex_uid = hex(uid)[2:].upper()
