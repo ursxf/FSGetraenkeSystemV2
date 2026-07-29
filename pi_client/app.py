@@ -170,12 +170,14 @@ def _calendar_worker(config: dict[str, Any]) -> None:
         upcoming = events[:10]
         
         with _state_lock:
+            old_events = _state.get('upcoming_events', [])
             _state['upcoming_events'] = upcoming
-            # We don't bump _version here to avoid triggering a reload on the client 
-            # while they are looking at the carousel, unless it's strictly necessary.
-            # Actually we can just update it silently, or bump version and frontend redraws.
-            # Bumping version on idle screen causes carousel reset. Let's just update silently.
             
+            # If the events changed and we are on the idle screen, bump the version
+            # so the frontend reloads and picks up the new calendar slides.
+            if old_events != upcoming and _state['mode'] == 'idle':
+                _state['_version'] += 1
+                
         # Wait 15 minutes before checking again
         time.sleep(15 * 60)
 
