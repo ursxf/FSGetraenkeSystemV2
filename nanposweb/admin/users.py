@@ -2,6 +2,7 @@ from typing import Union
 
 from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers import Response
 
 from .forms import BalanceForm, UserForm
@@ -45,6 +46,17 @@ def post() -> Union[Response, str]:
         create = True
         user = User()
 
+    new_card_hash = None
+    if not form.unset_card.data and form.card.data:
+        new_card_hash = calc_hash(form.card.data)
+        card_query = User.query.filter(User.card == new_card_hash)
+        if not create:
+            card_query = card_query.filter(User.id != user.id)
+        card_owner = card_query.first()
+        if card_owner is not None:
+            flash(f'This card is already registered to user "{card_owner.name}"', category='danger')
+            return render_template('users/form.html', form=form, edit=not create)
+
     user.name = form.name.data
     user.isop = form.isop.data
 
@@ -55,15 +67,22 @@ def post() -> Union[Response, str]:
 
     if form.unset_card.data:
         user.card = None
-    elif form.card.data:
-        user.card = calc_hash(form.card.data)
+    elif new_card_hash is not None:
+        user.card = new_card_hash
 
     if create:
         db.session.add(user)
+
+    try:
         db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash('Could not save user: name or card is already registered to another user', category='danger')
+        return render_template('users/form.html', form=form, edit=not create)
+
+    if create:
         flash(f'Created user {form.name.data}', category='success')
     else:
-        db.session.commit()
         flash(f'Updated user "{form.name.data}"', category='success')
 
     return redirect(url_for('admin.users.index'))
