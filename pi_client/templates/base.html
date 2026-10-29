@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de" class="h-100">
+<html lang="de" class="h-100 {% block html_class %}{% endblock %}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,6 +9,8 @@
           integrity="sha256-PI8n5gCcz9cQqQXm3PEtDuPG8qx9oFsFctPg0S5zb8g=" crossorigin="anonymous">
     <style>
         body { font-family: 'Segoe UI', sans-serif; }
+        /* Larger text and touch targets on big high-resolution screens (e.g. 14" 1920x1200) */
+        @media (min-width: 1600px) { html.scale-large { font-size: 20px; } }
         .card-product {
             cursor: pointer; transition: transform .1s;
             min-height: 6.5rem; border-width: 3px; border-radius: .75rem;

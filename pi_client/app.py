@@ -534,6 +534,89 @@ def purchase() -> Response:
     return redirect(url_for('index'))
 
 
+MAX_MULTI_ITEMS = 50  # upper bound for one multi purchase (sum of all quantities)
+
+
+@app.route('/purchase/multi', methods=['POST'])
+def purchase_multi() -> Response:
+    """Handle a multi purchase from the checkout overview.
+
+    The form contains one ``item`` field per product as ``"<product_id>:<quantity>"``.
+    The server API only books one product per call, so each unit is booked
+    individually.  If a call fails, the units booked so far stay booked and
+    are listed on the error screen.
+    """
+    items: list[tuple[int, int]] = []
+    try:
+        for raw in request.form.getlist('item'):
+            product_id, quantity = (int(part) for part in raw.split(':'))
+            if quantity > 0:
+                items.append((product_id, quantity))
+    except ValueError:
+        items = []
+
+    total_units = sum(quantity for _, quantity in items)
+    if not items or total_units > MAX_MULTI_ITEMS:
+        _set_state(mode='error', message='Ungültige Auswahl.')
+        return redirect(url_for('index'))
+
+    with _state_lock:
+        uid = _state.get('card_uid')
+        user_name = _state.get('user_name', '')
+
+    if not uid or _api_client is None:
+        _reset_to_idle()
+        return redirect(url_for('index'))
+
+    booked: dict[str, list[int]] = {}  # product name -> [quantity, amount in cents]
+    booked_units = 0
+    new_balance: Optional[int] = None
+    try:
+        for product_id, quantity in items:
+            for _ in range(quantity):
+                result = _api_client.purchase(uid, product_id)
+                line = booked.setdefault(result['product_name'], [0, 0])
+                line[0] += 1
+                line[1] += result['amount']
+                booked_units += 1
+                new_balance = result['new_balance']
+    except APIError as exc:
+        logger.warning('multi purchase aborted after %d of %d units: %s', booked_units, total_units, exc)
+        msg = f'Kauf nach {booked_units} von {total_units} Getränken abgebrochen: {exc}'
+        if booked:
+            msg += '\nBereits gebucht:\n' + _format_booked(booked)
+            msg += f'\nNeues Guthaben: {_fmt_currency(new_balance)}'
+        _set_state(mode='error', message=msg)
+        if booked:
+            _refresh_debtors_async()
+        return redirect(url_for('index'))
+
+    total = sum(amount for _, amount in booked.values())
+    msg = (
+        f'{user_name} hat gekauft:\n{_format_booked(booked)}\n'
+        f'Gesamt: {_fmt_currency(total)}\n'
+        f'Neues Guthaben: {_fmt_currency(new_balance)}'
+    )
+    _set_state(mode='success', message=msg, shame=_is_shameful(new_balance))
+    _refresh_debtors_async()
+    return redirect(url_for('index'))
+
+
+def _format_booked(booked: dict[str, list[int]]) -> str:
+    return '\n'.join(
+        f'{quantity}× {name} ({_fmt_currency(amount)})' for name, (quantity, amount) in booked.items()
+    )
+
+
+@app.route('/api/touch', methods=['POST'])
+def api_touch() -> Response:
+    """Keep the session alive while the user is selecting (resets the idle timeout)."""
+    with _state_lock:
+        if _state['mode'] in ('user', 'admin'):
+            _state['last_activity'] = time.monotonic()
+    return jsonify({'ok': True})
+
+
 def _is_shameful(new_balance: int) -> bool:
     """Return True if *new_balance* (cents) is at or below ``SHAME_THRESHOLD``."""
     threshold = _config.get('SHAME_THRESHOLD')

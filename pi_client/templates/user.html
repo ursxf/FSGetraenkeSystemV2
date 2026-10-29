@@ -1,5 +1,30 @@
 {% extends "base.html" %}
 
+{% block html_class %}scale-large{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* ---- Multi selection ---- */
+    .product-col { position: relative; }
+    .qty-controls { display: none; }
+    .multi-mode .card-product { min-height: 9.5rem; justify-content: flex-start; padding-bottom: 4rem !important; }
+    .multi-mode .qty-controls {
+        display: flex; align-items: center; justify-content: center; gap: 1rem;
+        position: absolute; left: 1.5rem; right: 1.5rem; bottom: .9rem;
+    }
+    .qty-controls .btn { width: 3rem; height: 2.75rem; font-size: 1.5rem; line-height: 1; padding: 0; border-width: 2px; }
+    .qty-count { font-size: 1.5rem; font-weight: bold; min-width: 2.5rem; text-align: center; }
+    .card-product.favorite ~ .qty-controls .qty-count { color: #fff; }
+    .card-product.selected { box-shadow: 0 0 0 4px var(--bs-success); }
+
+    .action-bar {
+        position: sticky; bottom: 0;
+        background-color: var(--bs-light); border-top: 1px solid var(--bs-border-color);
+    }
+    .action-bar .btn { min-height: 3.5rem; }
+</style>
+{% endblock %}
+
 {% block header_right %}
 <div class="text-end">
     <span class="fw-bold me-3">{{ user_name }}</span>
@@ -12,7 +37,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid py-3 px-4 flex-fill d-flex flex-column">
+<div class="container-fluid pt-3 px-4 flex-fill d-flex flex-column">
     <h2 class="mb-3">Getränk auswählen</h2>
 
     {% if balance is not none and balance <= -3000 %}
@@ -21,34 +46,192 @@
     </div>
     {% endif %}
 
+    <!-- Single purchase: one tap books the product immediately -->
+    <form id="single-form" method="post" action="/purchase">
+        <input type="hidden" name="product_id" id="single-product-id">
+    </form>
+
     <!-- align-content-start: keep tiles compact instead of stretching them over the screen -->
-    <div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3 align-content-start">
+    <div id="product-grid" class="row row-cols-2 row-cols-md-3 row-cols-lg-4 row-cols-xxl-5 g-3 align-content-start pb-3">
         {% for product in products %}
-        <div class="col">
-            <form method="post" action="/purchase">
-                <input type="hidden" name="product_id" value="{{ product.id }}">
-                <button type="submit"
-                        class="card-product w-100 h-100 p-3 text-center btn {% if product.id in favorites %}btn-primary favorite{% else %}btn-outline-primary{% endif %}">
-                    <div class="fw-bold fs-5 mb-1">{% if product.id in favorites %}⭐ {% endif %}{{ product.name }}</div>
-                    <div class="fs-price">{{ product.price | fmt_currency }}</div>
-                </button>
-            </form>
+        <div class="col product-col">
+            <button type="button"
+                    class="card-product w-100 h-100 p-3 text-center btn {% if product.id in favorites %}btn-primary favorite{% else %}btn-outline-primary{% endif %}"
+                    data-id="{{ product.id }}" data-name="{{ product.name }}" data-price="{{ product.price }}"
+                    onclick="productTap({{ product.id }})">
+                <div class="fw-bold fs-5 mb-1">{% if product.id in favorites %}⭐ {% endif %}{{ product.name }}</div>
+                <div class="fs-price">{{ product.price | fmt_currency }}</div>
+            </button>
+            <div class="qty-controls">
+                <button type="button" class="btn btn-light" onclick="changeQty({{ product.id }}, -1)">−</button>
+                <span class="qty-count" id="qty-{{ product.id }}">0</span>
+                <button type="button" class="btn btn-light" onclick="changeQty({{ product.id }}, 1)">+</button>
+            </div>
         </div>
         {% else %}
         <div class="col-12 text-center text-muted">Keine Produkte verfügbar.</div>
         {% endfor %}
+    </div>
+
+    {% if products %}
+    <div class="action-bar mt-auto mx-n4 px-4 py-2 d-flex gap-2">
+        <button type="button" id="multi-toggle" class="btn btn-outline-primary btn-lg" onclick="toggleMultiMode()">
+            Mehrfachauswahl
+        </button>
+        <button type="button" id="checkout-btn" class="btn btn-success btn-lg ms-auto" style="display:none;"
+                onclick="showCheckout()" disabled>
+            🛒 Zur Kasse
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Checkout overview -->
+<div class="modal" id="checkout-modal" tabindex="-1" aria-labelledby="checkout-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="checkout-title">Übersicht</h4>
+            </div>
+            <div class="modal-body">
+                <table class="table fs-5 mb-3">
+                    <tbody id="checkout-items"></tbody>
+                    <tfoot>
+                        <tr class="fw-bold">
+                            <td colspan="2">Gesamt</td>
+                            <td class="text-end" id="checkout-total"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+                <p class="fs-5 mb-0">
+                    Guthaben danach: <span class="fw-bold" id="checkout-balance"></span>
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal">Zurück</button>
+                <form id="multi-form" method="post" action="/purchase/multi" class="ms-auto">
+                    <div id="multi-form-items"></div>
+                    <button type="submit" id="confirm-btn" class="btn btn-success btn-lg">Jetzt buchen</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_script %}
 <script>
+    const MAX_QTY = 20;
+    const balance = {{ balance if balance is not none else 'null' }};
+    const products = {};
+    document.querySelectorAll('.card-product').forEach(el => {
+        products[el.dataset.id] = { name: el.dataset.name, price: parseInt(el.dataset.price, 10) };
+    });
+    const quantities = {};  // product id -> quantity
+    let multiMode = false;
+
+    function fmt(cents) {
+        return (cents / 100).toFixed(2).replace('.', ',') + ' €';
+    }
+
+    function productTap(id) {
+        if (multiMode) {
+            changeQty(id, 1);
+            return;
+        }
+        document.getElementById('single-product-id').value = id;
+        document.getElementById('single-form').submit();
+    }
+
+    function toggleMultiMode() {
+        multiMode = !multiMode;
+        Object.keys(quantities).forEach(id => delete quantities[id]);
+        document.getElementById('product-grid').classList.toggle('multi-mode', multiMode);
+        const toggle = document.getElementById('multi-toggle');
+        toggle.textContent = multiMode ? 'Auswahl abbrechen' : 'Mehrfachauswahl';
+        toggle.classList.toggle('btn-outline-primary', !multiMode);
+        toggle.classList.toggle('btn-outline-danger', multiMode);
+        document.getElementById('checkout-btn').style.display = multiMode ? '' : 'none';
+        render();
+    }
+
+    function changeQty(id, delta) {
+        const qty = Math.min(MAX_QTY, Math.max(0, (quantities[id] || 0) + delta));
+        if (qty === 0) {
+            delete quantities[id];
+        } else {
+            quantities[id] = qty;
+        }
+        render();
+    }
+
+    function selection() {
+        return Object.entries(quantities).map(([id, qty]) => ({ id, qty, ...products[id] }));
+    }
+
+    function render() {
+        Object.keys(products).forEach(id => {
+            const qty = quantities[id] || 0;
+            document.getElementById('qty-' + id).textContent = qty;
+            document.querySelector(`.card-product[data-id="${id}"]`).classList.toggle('selected', qty > 0);
+        });
+        const items = selection();
+        const count = items.reduce((sum, item) => sum + item.qty, 0);
+        const total = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+        const checkout = document.getElementById('checkout-btn');
+        checkout.disabled = count === 0;
+        checkout.textContent = count === 0 ? '🛒 Zur Kasse' : `🛒 Zur Kasse (${count}) · ${fmt(total)}`;
+    }
+
+    function showCheckout() {
+        const items = selection();
+        if (items.length === 0) return;
+        const total = items.reduce((sum, item) => sum + item.qty * item.price, 0);
+
+        const rows = document.getElementById('checkout-items');
+        const fields = document.getElementById('multi-form-items');
+        rows.innerHTML = '';
+        fields.innerHTML = '';
+        items.forEach(item => {
+            const row = rows.insertRow();
+            row.insertCell().textContent = item.qty + '×';
+            row.insertCell().textContent = item.name;
+            const price = row.insertCell();
+            price.textContent = fmt(item.qty * item.price);
+            price.className = 'text-end';
+
+            const field = document.createElement('input');
+            field.type = 'hidden';
+            field.name = 'item';
+            field.value = item.id + ':' + item.qty;
+            fields.appendChild(field);
+        });
+        document.getElementById('checkout-total').textContent = fmt(total);
+        document.getElementById('checkout-balance').textContent = balance === null ? '–' : fmt(balance - total);
+        document.getElementById('confirm-btn').textContent = 'Jetzt buchen · ' + fmt(total);
+
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('checkout-modal')).show();
+    }
+
+    /* Prevent double bookings from a second tap while the request is running */
+    document.getElementById('multi-form').addEventListener('submit', () => {
+        const btn = document.getElementById('confirm-btn');
+        btn.disabled = true;
+        btn.textContent = 'Wird gebucht …';
+    });
+
     /* Auto-return to idle on timeout (server enforces it too, but keep UI in sync). */
     let idleTimeout = 60000;
     let timer = setTimeout(() => { window.location.href = '/'; }, idleTimeout);
+    let lastTouch = 0;
     document.addEventListener('click', () => {
         clearTimeout(timer);
         timer = setTimeout(() => { window.location.href = '/'; }, idleTimeout);
+        /* Tell the server the user is still active, so a long selection is not cut off */
+        if (Date.now() - lastTouch > 5000) {
+            lastTouch = Date.now();
+            fetch('/api/touch', { method: 'POST' }).catch(() => {});
+        }
     });
 </script>
 {% endblock %}
