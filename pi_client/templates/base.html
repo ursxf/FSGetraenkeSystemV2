@@ -9,8 +9,15 @@
           integrity="sha256-PI8n5gCcz9cQqQXm3PEtDuPG8qx9oFsFctPg0S5zb8g=" crossorigin="anonymous">
     <style>
         body { font-family: 'Segoe UI', sans-serif; }
-        .card-product { cursor: pointer; transition: transform .1s; }
+        .card-product {
+            cursor: pointer; transition: transform .1s;
+            min-height: 6.5rem; border-width: 3px; border-radius: .75rem;
+            display: flex; flex-direction: column; justify-content: center;
+        }
         .card-product:hover { transform: scale(1.04); }
+        .card-product:not(.favorite) { --bs-btn-bg: #fff; }
+        .card-product:not(.favorite) .fs-price { color: var(--bs-secondary-color); }
+        .card-product:not(.favorite):hover .fs-price { color: inherit; }
         .fs-price { font-size: 1.1rem; }
     </style>
     {% block extra_head %}{% endblock %}
