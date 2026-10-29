@@ -35,13 +35,14 @@ from __future__ import annotations
 
 import importlib.util
 import logging
+import os
 import threading
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional, Union
 
 import requests
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, abort, jsonify, redirect, render_template, request, send_file, url_for
 from werkzeug.wrappers import Response
 
 from api_client import APIError, NFCApiClient
@@ -72,6 +73,10 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     'MOST_WANTED_POLL_INTERVAL': 60,  # 60 seconds
     'PIR_PIN': 17,
     'DISPLAY_TIMEOUT': 120,
+    # Play the shame sound when a purchase leaves the balance at or below this
+    # value (euros, e.g. -10).  None disables the feature.
+    'SHAME_THRESHOLD': None,
+    'SHAME_SOUND_FILE': 'sounds/shame.mp3',
 }
 
 # ---------------------------------------------------------------------------
@@ -93,6 +98,7 @@ _state: dict[str, Any] = {
     'most_wanted': [],    # [{id, name, balance, debt}, …]
     'rich_bitches': [],   # [{id, name, balance}, …]
     'message': '',
+    'shame': False,       # play the shame sound on the success screen
     'last_activity': time.monotonic(),
     '_version': 0,        # incremented on every state change for polling
 }
@@ -119,6 +125,7 @@ def _reset_to_idle() -> None:
             'products': [],
             'users': [],
             'message': '',
+            'shame': False,
             'last_activity': time.monotonic(),
         })
         # Keep upcoming_events and most_wanted unmodified on reset!
@@ -478,7 +485,8 @@ def index() -> Union[str, Response]:
     if mode in ('success', 'error'):
         with _state_lock:
             msg = _state['message']
-        return render_template('result.html', mode=mode, message=msg)
+            shame = _state['shame'] and mode == 'success'
+        return render_template('result.html', mode=mode, message=msg, shame=shame)
 
     return redirect(url_for('index'))
 
@@ -521,9 +529,29 @@ def purchase() -> Response:
         f'{_fmt_currency(result["amount"])} gekauft.\n'
         f'Neues Guthaben: {_fmt_currency(result["new_balance"])}'
     )
-    _set_state(mode='success', message=msg)
+    _set_state(mode='success', message=msg, shame=_is_shameful(result['new_balance']))
     _refresh_debtors_async()
     return redirect(url_for('index'))
+
+
+def _is_shameful(new_balance: int) -> bool:
+    """Return True if *new_balance* (cents) is at or below ``SHAME_THRESHOLD``."""
+    threshold = _config.get('SHAME_THRESHOLD')
+    if threshold is None:
+        return False
+    return new_balance <= round(float(threshold) * 100)
+
+
+@app.route('/sound/shame')
+def shame_sound() -> Response:
+    """Serve the configured shame sound file."""
+    path = _config.get('SHAME_SOUND_FILE') or _DEFAULT_CONFIG['SHAME_SOUND_FILE']
+    if not os.path.isabs(path):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
+    if not os.path.isfile(path):
+        logger.warning('Shame sound file not found: %s', path)
+        abort(404)
+    return send_file(path)
 
 
 @app.route('/admin/balance', methods=['POST'])
@@ -563,7 +591,7 @@ def admin_balance() -> Response:
         f'{user_name} wurden {_fmt_currency(int(amount * 100))} durch {admin_name} {action}.\n'
         f'Neues Guthaben: {_fmt_currency(result["new_balance"])}'
     )
-    _set_state(mode='success', message=msg)
+    _set_state(mode='success', message=msg, shame=False)
     _refresh_debtors_async()
     return redirect(url_for('index'))
 

@@ -19,10 +19,10 @@ sudo apt-get update
 sudo apt-get install -y --no-install-recommends \
     wayfire wlr-randr chromium \
     libnfc-dev libusb-dev python3-venv python3-pip git \
-    liblgpio-dev python3-dev swig
+    liblgpio-dev python3-dev swig alsa-utils
 
 echo "Adding user to necessary hardware groups..."
-sudo usermod -a -G spi,gpio,video,render,input $USER
+sudo usermod -a -G spi,gpio,video,render,input,audio $USER
 
 echo "========================================"
 echo "  Setting up Python environment...      "
@@ -73,7 +73,7 @@ plugins = autostart
 
 [autostart]
 # Wait a few seconds to ensure the python app is up and running
-chromium = sh -c 'sleep 5 && chromium --noerrdialogs --disable-infobars --kiosk http://localhost:8080'
+chromium = sh -c 'sleep 5 && chromium --noerrdialogs --disable-infobars --autoplay-policy=no-user-gesture-required --kiosk http://localhost:8080'
 EOF
 sudo chown -R $USER:$USER "$USER_HOME/.config"
 

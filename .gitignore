@@ -146,3 +146,6 @@ cython_debug/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
 
+
+# Pi client sound files (not distributed)
+pi_client/sounds/

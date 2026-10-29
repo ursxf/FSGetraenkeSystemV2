@@ -127,8 +127,50 @@ For kiosk mode on Raspberry Pi OS with a touchscreen, add this to
 `~/.config/lxsession/LXDE-pi/autostart`:
 
 ```
-@chromium-browser --kiosk --noerrdialogs --disable-infobars http://localhost:8080
+@chromium-browser --kiosk --noerrdialogs --disable-infobars --autoplay-policy=no-user-gesture-required http://localhost:8080
 ```
+
+---
+
+## Shame sound
+
+When a purchase leaves the buyer's balance at or below `SHAME_THRESHOLD`
+(euros, e.g. `-10`), the success screen shows "Shame! Shame! Shame!" and the
+kiosk browser plays the sound file configured in `SHAME_SOUND_FILE`
+(default `sounds/shame.mp3`, not shipped with the repository).
+
+```python
+SHAME_THRESHOLD = -10
+SHAME_SOUND_FILE = 'sounds/shame.mp3'
+```
+
+Chromium must be started with `--autoplay-policy=no-user-gesture-required`,
+otherwise it may block the sound.  If the sound cannot be played, the screen
+behaves like a normal success screen.
+
+The purchase itself is booked as usual – the sound is only played afterwards.
+
+### Audio setup on the Pi
+
+The kiosk browser plays the sound through ALSA.  On a Pi that has never
+played audio:
+
+```bash
+sudo apt-get install -y alsa-utils
+sudo usermod -a -G audio $USER      # log out / reboot afterwards
+aplay -l                            # list output devices (HDMI, headphones, USB, …)
+speaker-test -c 2 -t wav -l 1       # test the default device
+```
+
+If the sound comes out of the wrong device, set the default card (number from
+`aplay -l`) in `~/.asoundrc`, e.g. for card 1:
+
+```
+defaults.pcm.card 1
+defaults.ctl.card 1
+```
+
+Adjust the volume with `alsamixer` (F6 selects the card).
 
 ---
 

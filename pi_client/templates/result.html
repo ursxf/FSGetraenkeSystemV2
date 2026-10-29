@@ -2,7 +2,10 @@
 
 {% block content %}
 <div class="d-flex flex-column align-items-center justify-content-center flex-fill text-center p-4">
-    {% if mode == 'success' %}
+    {% if mode == 'success' and shame %}
+    <div class="display-1 mb-4">🔔</div>
+    <h2 class="text-danger fw-bold mb-3">Shame! Shame! Shame!</h2>
+    {% elif mode == 'success' %}
     <div class="display-1 mb-4">✅</div>
     <h2 class="text-success fw-bold mb-3">Erfolgreich!</h2>
     {% else %}
@@ -12,6 +15,9 @@
 
     <p class="fs-5 mb-4" style="white-space: pre-line;">{{ message }}</p>
     <a href="/reset" class="btn btn-primary btn-lg">Zurück</a>
+    {% if shame %}
+    <audio id="shame-sound" src="/sound/shame" preload="auto"></audio>
+    {% endif %}
 </div>
 {% endblock %}
 
@@ -19,8 +25,24 @@
 <script>
     /* Auto-return to idle after a short delay */
     let delay = {{ 3000 if mode == 'success' else 5000 }};
-    setTimeout(() => {
+    let returned = false;
+    function returnToIdle() {
+        if (returned) return;
+        returned = true;
         fetch('/reset').then(() => { window.location.href = '/'; });
-    }, delay);
+    }
+
+    const shameSound = document.getElementById('shame-sound');
+    if (shameSound) {
+        /* Let the sound finish before returning to idle (capped at 15 s) */
+        let timer = setTimeout(returnToIdle, 15000);
+        shameSound.addEventListener('ended', () => setTimeout(returnToIdle, 500));
+        shameSound.play().catch(() => {
+            clearTimeout(timer);
+            setTimeout(returnToIdle, delay);
+        });
+    } else {
+        setTimeout(returnToIdle, delay);
+    }
 </script>
 {% endblock %}

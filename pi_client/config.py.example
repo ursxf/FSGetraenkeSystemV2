@@ -34,6 +34,16 @@ CALENDAR_EVENT_LIMIT = 8
 # Number of debtors shown in the Most Wanted list on the idle screen
 MOST_WANTED_LIMIT = 10
 
+# ---- Shame sound -------------------------------------------------------
+
+# Play the "Shame! Shame! Shame!" sound when a purchase leaves the buyer's
+# balance at or below this value (euros, e.g. -10). Set to None to disable.
+SHAME_THRESHOLD = None
+
+# Sound file played by the kiosk browser (relative to this directory or absolute).
+# The file is not shipped with the repository – put your own mp3 there.
+SHAME_SOUND_FILE = 'sounds/shame.mp3'
+
 # ---- Display behaviour (Hardware) --------------------------------------
 
 # GPIO pin for a PIR motion sensor (e.g. 17). Set to None to disable.
