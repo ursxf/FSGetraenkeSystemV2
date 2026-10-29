@@ -8,6 +8,15 @@
 </div>
 {% endblock %}
 
+{% block extra_head %}
+<style>
+    .keypad-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+    .keypad-grid .btn { min-height: 3rem; font-size: 1.5rem; padding: .25rem; }
+    .keypad-grid .keypad-ok { grid-column: span 2; }
+    #amount-input { cursor: pointer; background-color: #fff; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid py-3 px-4 flex-fill d-flex flex-column">
     <h2 class="mb-3">Admin-Panel – Guthaben verwalten</h2>
@@ -64,11 +73,29 @@
                         <!-- Custom amount -->
                         <form id="balance-form-custom" method="post" action="/admin/balance">
                             <input type="hidden" name="user_id" id="form-user-id">
+                            <input type="hidden" name="amount" id="form-amount">
                             <div class="mb-3">
                                 <label class="form-label fw-semibold" for="amount-input">Betrag (€)</label>
-                                <input type="number" class="form-control form-control-lg"
-                                       id="amount-input" name="amount"
-                                       min="0.01" step="0.01" placeholder="0,00" required>
+                                <!-- readonly + inputmode=none: no system keyboard, input via keypad below -->
+                                <input type="text" class="form-control form-control-lg"
+                                       id="amount-input" inputmode="none" readonly
+                                       placeholder="0,00" onclick="showKeypad()">
+                            </div>
+
+                            <!-- On-screen keypad (the terminal has no keyboard) -->
+                            <div id="keypad" class="mb-3" style="display:none;">
+                                <div class="keypad-grid">
+                                    {% for key in ['1', '2', '3', '4', '5', '6', '7', '8', '9', ',', '0'] %}
+                                    <button type="button" class="btn btn-outline-secondary btn-lg"
+                                            onclick="keypadPress('{{ key }}')">{{ key }}</button>
+                                    {% endfor %}
+                                    <button type="button" class="btn btn-outline-secondary btn-lg"
+                                            onclick="keypadBackspace()">⌫</button>
+                                    <button type="button" class="btn btn-outline-danger btn-lg"
+                                            onclick="keypadClear()">C</button>
+                                    <button type="button" class="btn btn-primary btn-lg keypad-ok"
+                                            onclick="hideKeypad()">OK</button>
+                                </div>
                             </div>
                             <div class="d-flex gap-2">
                                 <button type="submit" name="recharge" value="true"
@@ -101,15 +128,62 @@
         document.getElementById('selected-name').textContent = name;
         document.getElementById('selected-balance').textContent = fmt(balance);
         document.getElementById('form-user-id').value = id;
-        document.getElementById('amount-input').value = '';
+        keypadClear();
         // Highlight selected row
         document.querySelectorAll('#user-list .list-group-item').forEach(el => el.classList.remove('active'));
         event.currentTarget.classList.add('active');
     }
 
     function setAmount(euros) {
-        document.getElementById('amount-input').value = euros.toFixed(2);
+        document.getElementById('amount-input').value = euros.toFixed(2).replace('.', ',');
+        hideKeypad();
     }
+
+    /* ---- On-screen keypad ---- */
+    const amountInput = document.getElementById('amount-input');
+
+    function showKeypad() {
+        document.getElementById('keypad').style.display = 'block';
+    }
+
+    function hideKeypad() {
+        document.getElementById('keypad').style.display = 'none';
+    }
+
+    function keypadPress(key) {
+        const value = amountInput.value;
+        const [whole, decimals] = value.split(',');
+        if (key === ',') {
+            if (value.includes(',')) return;
+            amountInput.value = (value === '' ? '0' : value) + ',';
+            return;
+        }
+        if (decimals !== undefined && decimals.length >= 2) return;  // max. 2 decimals
+        if (decimals === undefined && whole.length >= 4) return;     // max. 9999 €
+        amountInput.value = (value === '0' ? '' : value) + key;
+    }
+
+    function keypadBackspace() {
+        amountInput.value = amountInput.value.slice(0, -1);
+    }
+
+    function keypadClear() {
+        amountInput.value = '';
+    }
+
+    /* Convert "12,50" to the "12.50" the server expects and validate */
+    document.getElementById('balance-form-custom').addEventListener('submit', (event) => {
+        const amount = parseFloat(amountInput.value.replace(',', '.'));
+        if (!(amount > 0)) {
+            event.preventDefault();
+            amountInput.classList.add('is-invalid');
+            showKeypad();
+            return;
+        }
+        document.getElementById('form-amount').value = amount.toFixed(2);
+    });
+    amountInput.addEventListener('click', () => amountInput.classList.remove('is-invalid'));
+    document.getElementById('keypad').addEventListener('click', () => amountInput.classList.remove('is-invalid'));
 
     /* Auto-return to idle after 5 minutes of inactivity on admin panel */
     let idleTimeout = 300000;
