@@ -1,0 +1,316 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Statistics{% endblock %}
+
+{% block additional_styles %}
+<style>
+    .stat-tile .stat-label { color: var(--bs-secondary-color); font-size: .9rem; }
+    .stat-tile .stat-value { font-size: 1.75rem; font-weight: 600; line-height: 1.2; }
+    .stat-tile .stat-detail { color: var(--bs-secondary-color); font-size: .85rem; }
+    .chart-box { position: relative; height: 260px; }
+    .rank-bar { height: 4px; background-color: var(--bs-primary); border-radius: 2px; }
+    .stat-tile .stat-delta { font-size: .85rem; margin-top: .25rem; }
+</style>
+{% endblock %}
+
+{% macro delta(current, previous) %}
+{%- if comparison is not none %}
+{%- set change = comparison.delta(current, previous) %}
+<div class="stat-delta" title="Compared with {{ 'the same period of ' if comparison.partial }}{{ comparison.label }}">
+    {%- if change is none %}<span class="text-muted">– vs. {{ comparison.label }}</span>
+    {%- elif change >= 0.5 %}<span class="text-success"><i class="fa-solid fa-arrow-trend-up"></i> +{{ '%.0f' | format(change) }} %</span>
+    <span class="text-muted">vs. {{ comparison.label }}</span>
+    {%- elif change <= -0.5 %}<span class="text-danger"><i class="fa-solid fa-arrow-trend-down"></i> {{ '%.0f' | format(change) }} %</span>
+    <span class="text-muted">vs. {{ comparison.label }}</span>
+    {%- else %}<span class="text-muted">± 0 % vs. {{ comparison.label }}</span>
+    {%- endif %}
+</div>
+{%- endif %}
+{%- endmacro %}
+
+{% block content %}
+{% set period_label %}{% if year is none %}all time{% elif month is none %}{{ year }}{% else %}{{ month_names[month - 1] }} {{ year }}{% endif %}{% endset %}
+{% set product_label %}{% if product_selection in product_groups %}{{ product_groups[product_selection] }}{% else %}{% for p in products if p.id|string == product_selection %}{{ p.name }}{% endfor %}{% endif %}{% endset %}
+
+<!-- Filters -->
+<form method="get" class="row g-2 align-items-end my-3" id="stats-filter">
+    <div class="col-sm-auto">
+        <label class="form-label mb-1" for="year">Year</label>
+        <select class="form-select" name="year" id="year">
+            <option value="all" {% if year is none %}selected{% endif %}>All time</option>
+            {% for y in year_options %}
+            <option value="{{ y }}" {% if year == y %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-sm-auto">
+        <label class="form-label mb-1" for="month">Month</label>
+        <select class="form-select" name="month" id="month" {% if year is none %}disabled{% endif %}>
+            <option value="">Whole year</option>
+            {% for name in month_names %}
+            <option value="{{ loop.index }}" {% if month == loop.index %}selected{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="col-sm-auto">
+        <label class="form-label mb-1" for="products">Products</label>
+        <select class="form-select" name="products" id="products">
+            {% for key, label in product_groups.items() %}
+            <option value="{{ key }}" {% if product_selection == key %}selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+            <optgroup label="Single product">
+                {% for p in products %}
+                <option value="{{ p.id }}" {% if product_selection == p.id|string %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+            </optgroup>
+        </select>
+    </div>
+    <noscript><div class="col-sm-auto"><button type="submit" class="btn btn-primary">Show</button></div></noscript>
+</form>
+
+<h4 class="mb-3">{{ product_label }} · {{ period_label }}</h4>
+
+{% if stats.count == 0 %}
+<div class="alert alert-secondary">No purchases in this period.</div>
+{% else %}
+
+<!-- Key figures -->
+<div class="row row-cols-2 row-cols-md-3 row-cols-xl-6 g-3 mb-4">
+    <div class="col"><div class="card stat-tile h-100"><div class="card-body">
+        <div class="stat-label">Purchases</div>
+        <div class="stat-value">{{ stats.count }}</div>
+        <div class="stat-detail">by {{ stats.users }} user{{ 's' if stats.users != 1 }}</div>
+        {{ delta(stats.count, comparison.count if comparison else 0) }}
+    </div></div></div>
+    <div class="col"><div class="card stat-tile h-100"><div class="card-body">
+        <div class="stat-label">Revenue</div>
+        <div class="stat-value">{{ stats.amount | format_currency }}</div>
+        {{ delta(stats.amount, comparison.amount if comparison else 0) }}
+    </div></div></div>
+    <div class="col"><div class="card stat-tile h-100"><div class="card-body">
+        <div class="stat-label">Per day</div>
+        <div class="stat-value">{{ ('%.1f' | format(stats.per_day)) | replace('.', ',') }}</div>
+        <div class="stat-detail">average over {{ stats.days }} day{{ 's' if stats.days != 1 }}</div>
+        {{ delta(stats.per_day, comparison.per_day if comparison else 0) }}
+    </div></div></div>
+    <div class="col"><div class="card stat-tile h-100"><div class="card-body">
+        <div class="stat-label">Busiest day</div>
+        <div class="stat-value">{{ stats.busiest_day[1] }}</div>
+        <div class="stat-detail">{{ stats.busiest_day[0].strftime('%a, %d.%m.%Y') }}</div>
+    </div></div></div>
+    <div class="col"><div class="card stat-tile h-100"><div class="card-body">
+        <div class="stat-label">Days with purchases</div>
+        <div class="stat-value">{{ stats.active_days }}</div>
+        <div class="stat-detail">of {{ stats.days }} day{{ 's' if stats.days != 1 }}</div>
+    </div></div></div>
+    {# For a single product the top product is obvious, so show the top user instead #}
+    {% set top = stats.users_ranking[0] if product_selection.isdigit() else stats.products[0] %}
+    <div class="col"><div class="card stat-tile h-100"><div class="card-body">
+        <div class="stat-label">{{ 'Top user' if product_selection.isdigit() else 'Top product' }}</div>
+        <div class="stat-value text-truncate">{{ top.name }}</div>
+        <div class="stat-detail">{{ top.count }} × ({{ '%.0f' | format(top.share * 100) }} %)</div>
+    </div></div></div>
+</div>
+
+<!-- Charts -->
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">
+            Purchases per {% if year is none %}year{% elif month is none %}month{% else %}day{% endif %}
+        </h5>
+        <div class="chart-box"><canvas id="chart-timeline" role="img"
+            aria-label="Purchases per {% if year is none %}year{% elif month is none %}month{% else %}day{% endif %}"></canvas></div>
+    </div>
+</div>
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title">Average per weekday</h5>
+            <div class="chart-box"><canvas id="chart-weekdays" role="img" aria-label="Average purchases per weekday"></canvas></div>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title">Purchases by time of day</h5>
+            <div class="chart-box"><canvas id="chart-hours" role="img" aria-label="Purchases by hour of day"></canvas></div>
+        </div></div>
+    </div>
+</div>
+
+<!-- Rankings -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title">Top products</h5>
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>#</th><th>Product</th><th class="text-end">Count</th><th class="text-end">Share</th><th class="text-end">Revenue</th></tr></thead>
+                <tbody>
+                {% for r in stats.products[:top_limit] %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>
+                        <a href="?{{ {'year': year if year is not none else 'all', 'month': month or '', 'products': r.id} | urlencode }}"
+                           class="text-decoration-none" title="Show statistics for {{ r.name }}">{{ r.name }}</a>
+                        <div class="rank-bar mt-1" style="width: {{ (r.count / stats.products[0].count * 100) | round(1) }}%"></div>
+                    </td>
+                    <td class="text-end">{{ r.count }}</td>
+                    <td class="text-end">{{ '%.0f' | format(r.share * 100) }} %</td>
+                    <td class="text-end">{{ r.amount | format_currency }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title">Top users</h5>
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>#</th><th>User</th><th>Favorite</th><th class="text-end">Count</th><th class="text-end">Spent</th></tr></thead>
+                <tbody>
+                {% for r in stats.users_ranking[:top_limit] %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>
+                        {{ r.name }}
+                        <div class="rank-bar mt-1" style="width: {{ (r.count / stats.users_ranking[0].count * 100) | round(1) }}%"></div>
+                    </td>
+                    <td class="text-muted">{{ r.favorite }}</td>
+                    <td class="text-end">{{ r.count }}</td>
+                    <td class="text-end">{{ r.amount | format_currency }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div></div>
+    </div>
+</div>
+
+<!-- Streaks & drinking buddies -->
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title mb-1">Longest streaks</h5>
+            <p class="text-muted small">Consecutive open days with a purchase. Days on which nobody bought anything don't break a streak.</p>
+            {% if streaks %}
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>#</th><th>User</th><th class="text-end">Days</th><th class="text-end">Period</th></tr></thead>
+                <tbody>
+                {% for s in streaks %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ s.name }}{% if s.ongoing %} <span class="badge text-bg-success"><i class="fa-solid fa-fire"></i> ongoing</span>{% endif %}</td>
+                    <td class="text-end fw-semibold">{{ s.days }}</td>
+                    <td class="text-end text-muted">{{ s.start.strftime('%d.%m.%Y') }} – {{ s.end.strftime('%d.%m.%Y') }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted mb-0">No streaks of two or more days.</p>
+            {% endif %}
+        </div></div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card h-100"><div class="card-body">
+            <h5 class="card-title mb-1">Drinking buddies</h5>
+            <p class="text-muted small">Days on which two users bought within {{ buddy_minutes }} minutes of each other.</p>
+            {% if buddies %}
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>#</th><th>Buddies</th><th class="text-end">Days together</th></tr></thead>
+                <tbody>
+                {% for b in buddies %}
+                <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ b.names[0] }} <i class="fa-solid fa-champagne-glasses text-muted mx-1"></i> {{ b.names[1] }}
+                        <div class="rank-bar mt-1" style="width: {{ (b.days / buddies[0].days * 100) | round(1) }}%"></div>
+                    </td>
+                    <td class="text-end fw-semibold">{{ b.days }}</td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="text-muted mb-0">No purchases close enough together.</p>
+            {% endif %}
+        </div></div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Long-term values -->
+{% if years %}
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Long-term · {{ product_label }}</h5>
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Year</th><th class="text-end">Purchases</th><th class="text-end">Days</th><th class="text-end">Per day</th><th class="text-end">Busiest day</th></tr></thead>
+            <tbody>
+            {% for y in years %}
+            <tr>
+                <td><a href="?{{ {'year': y.year, 'products': product_selection} | urlencode }}" class="text-decoration-none">{{ y.year }}</a>
+                    {% if y.year == today.year %}<span class="text-muted small">(so far)</span>{% endif %}</td>
+                <td class="text-end">{{ y.count }}</td>
+                <td class="text-end">{{ y.days }}</td>
+                <td class="text-end">{{ ('%.1f' | format(y.per_day)) | replace('.', ',') }}</td>
+                <td class="text-end">{% if y.busiest_day %}{{ y.busiest_day[1] }} on {{ y.busiest_day[0].strftime('%d.%m.') }}{% else %}–{% endif %}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block script %}
+<script>
+    /* Apply filters immediately */
+    document.querySelectorAll('#stats-filter select').forEach(select => {
+        select.addEventListener('change', () => {
+            if (select.id === 'year') document.getElementById('month').value = '';
+            document.getElementById('stats-filter').submit();
+        });
+    });
+</script>
+{% if stats.count %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+<script>
+    const css = getComputedStyle(document.documentElement);
+    const color = css.getPropertyValue('--bs-primary').trim();
+    const ink = css.getPropertyValue('--bs-secondary-color').trim();
+    const grid = css.getPropertyValue('--bs-border-color-translucent').trim();
+
+    function barChart(id, labels, values, unit, decimals) {
+        new Chart(document.getElementById(id), {
+            type: 'bar',
+            data: { labels, datasets: [{ data: values, backgroundColor: color, hoverBackgroundColor: color,
+                                         maxBarThickness: 24, borderRadius: 4, borderSkipped: 'start' }] },
+            options: {
+                maintainAspectRatio: false,
+                animation: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        displayColors: false,
+                        callbacks: { label: ctx => ctx.parsed.y.toFixed(decimals).replace('.', ',') + ' ' + unit },
+                    },
+                },
+                interaction: { mode: 'index', intersect: false },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: ink } },
+                    y: { beginAtZero: true, border: { display: false }, grid: { color: grid },
+                         ticks: { color: ink, precision: decimals ? undefined : 0 } },
+                },
+            },
+        });
+    }
+
+    barChart('chart-timeline', {{ stats.timeline | map(attribute=0) | list | tojson }},
+             {{ stats.timeline | map(attribute=1) | list | tojson }}, 'purchases', 0);
+    barChart('chart-weekdays', {{ stats.weekdays | map(attribute=0) | list | tojson }},
+             {{ stats.weekdays | map(attribute=1) | map('round', 2) | list | tojson }}, 'per day', 1);
+    barChart('chart-hours', {{ stats.hours | map(attribute=0) | list | tojson }},
+             {{ stats.hours | map(attribute=1) | list | tojson }}, 'purchases', 0);
+</script>
+{% endif %}
+{% endblock %}

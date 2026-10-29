@@ -34,6 +34,7 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
         FAVORITES_DISPLAY=3,  # Amount of favorite products which should get highlighted
         FAVORITES_DAYS=100,  # Timespan for calculation of favorite products in Days
         NFC_API_KEY=None,  # Shared secret for Raspberry Pi NFC clients; set to a long random string to enable
+        STATS_TIMEZONE='Europe/Berlin',  # Timezone used to group purchases by day/hour in the statistics
     )
     if nanposweb_app.debug:
         nanposweb_app.config.from_mapping(
