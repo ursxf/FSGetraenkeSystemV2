@@ -64,10 +64,33 @@
             </optgroup>
         </select>
     </div>
+    <div class="col-sm-auto">
+        <label class="form-label mb-1" for="user">User</label>
+        <select class="form-select" name="user" id="user">
+            <option value="">All users</option>
+            {% for u in users %}
+            <option value="{{ u.id }}" {% if selected_user == u.id %}selected{% endif %}>{{ u.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
     <noscript><div class="col-sm-auto"><button type="submit" class="btn btn-primary">Show</button></div></noscript>
 </form>
 
-<h4 class="mb-3">{{ product_label }} · {{ period_label }}</h4>
+{# Query parameters of the current filter, used to build links that change only one of them #}
+{% set filter_args = {'year': year if year is not none else 'all', 'month': month or '', 'products': product_selection, 'user': selected_user or ''} %}
+
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+    <h4 class="mb-0 me-auto">{{ product_label }} · {{ period_label }}{% if selected_user_name %} · {{ selected_user_name }}{% endif %}</h4>
+    {% if selected_user %}
+    <a class="btn btn-outline-primary btn-sm"
+       href="{{ url_for('account.wrapped', user=selected_user, year=year if year is not none else today.year) }}">
+        <i class="fa-solid fa-gift"></i> {{ selected_user_name }}'s Wrapped
+    </a>
+    <a class="btn btn-outline-secondary btn-sm" href="?{{ dict(filter_args, user='') | urlencode }}">
+        <i class="fa-solid fa-xmark"></i> All users
+    </a>
+    {% endif %}
+</div>
 
 {% if stats.count == 0 %}
 <div class="alert alert-secondary">No purchases in this period.</div>
@@ -103,9 +126,10 @@
         <div class="stat-detail">of {{ stats.days }} day{{ 's' if stats.days != 1 }}</div>
     </div></div></div>
     {# For a single product the top product is obvious, so show the top user instead #}
-    {% set top = stats.users_ranking[0] if product_selection.isdigit() else stats.products[0] %}
+    {% set show_top_user = product_selection.isdigit() and not selected_user %}
+    {% set top = stats.users_ranking[0] if show_top_user else stats.products[0] %}
     <div class="col"><div class="card stat-tile h-100"><div class="card-body">
-        <div class="stat-label">{{ 'Top user' if product_selection.isdigit() else 'Top product' }}</div>
+        <div class="stat-label">{{ 'Top user' if show_top_user else 'Top product' }}</div>
         <div class="stat-value text-truncate">{{ top.name }}</div>
         <div class="stat-detail">{{ top.count }} × ({{ '%.0f' | format(top.share * 100) }} %)</div>
     </div></div></div>
@@ -138,7 +162,7 @@
 
 <!-- Rankings -->
 <div class="row g-4 mb-4">
-    <div class="col-lg-6">
+    <div class="{{ 'col-12' if selected_user else 'col-lg-6' }}">
         <div class="card h-100"><div class="card-body">
             <h5 class="card-title">Top products</h5>
             <table class="table table-sm align-middle mb-0">
@@ -148,7 +172,7 @@
                 <tr>
                     <td>{{ loop.index }}</td>
                     <td>
-                        <a href="?{{ {'year': year if year is not none else 'all', 'month': month or '', 'products': r.id} | urlencode }}"
+                        <a href="?{{ dict(filter_args, products=r.id) | urlencode }}"
                            class="text-decoration-none" title="Show statistics for {{ r.name }}">{{ r.name }}</a>
                         <div class="rank-bar mt-1" style="width: {{ (r.count / stats.products[0].count * 100) | round(1) }}%"></div>
                     </td>
@@ -161,6 +185,7 @@
             </table>
         </div></div>
     </div>
+    {% if not selected_user %}
     <div class="col-lg-6">
         <div class="card h-100"><div class="card-body">
             <h5 class="card-title">Top users</h5>
@@ -171,7 +196,8 @@
                 <tr>
                     <td>{{ loop.index }}</td>
                     <td>
-                        {{ r.name }}
+                        <a href="?{{ dict(filter_args, user=r.id) | urlencode }}"
+                           class="text-decoration-none" title="Show statistics for {{ r.name }}">{{ r.name }}</a>
                         <div class="rank-bar mt-1" style="width: {{ (r.count / stats.users_ranking[0].count * 100) | round(1) }}%"></div>
                     </td>
                     <td class="text-muted">{{ r.favorite }}</td>
@@ -183,6 +209,7 @@
             </table>
         </div></div>
     </div>
+    {% endif %}
 </div>
 
 <!-- Streaks & drinking buddies -->
@@ -247,7 +274,7 @@
             <tbody>
             {% for y in years %}
             <tr>
-                <td><a href="?{{ {'year': y.year, 'products': product_selection} | urlencode }}" class="text-decoration-none">{{ y.year }}</a>
+                <td><a href="?{{ dict(filter_args, year=y.year, month='') | urlencode }}" class="text-decoration-none">{{ y.year }}</a>
                     {% if y.year == today.year %}<span class="text-muted small">(so far)</span>{% endif %}</td>
                 <td class="text-end">{{ y.count }}</td>
                 <td class="text-end">{{ y.days }}</td>

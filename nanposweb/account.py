@@ -1,11 +1,12 @@
 from typing import Union
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers import Response
 from wtforms.validators import InputRequired
 
+from .admin.stats import build_wrapped, wrapped_years
 from .db import db
 from .db.helpers import revenue_query
 from .db.models import User
@@ -21,6 +22,34 @@ def revenues() -> str:
     revenues_query = revenue_query(current_user.id)
     revenues_result = db.session.execute(revenues_query).all()
     return render_template('account/index.html', revenues=revenues_result)
+
+
+@account_bp.route('/wrapped')
+@login_required
+def wrapped() -> str:
+    """Personal year in review. Admins can open it for other users with ?user=<id>."""
+    user_id = current_user.id
+    requested = request.args.get('user', type=int)
+    if requested is not None and requested != current_user.id:
+        if not current_user.isop:
+            abort(401)
+        if User.query.get(requested) is None:
+            abort(404)
+        user_id = requested
+
+    years = wrapped_years(user_id)
+    year = request.args.get('year', type=int)
+    if year not in years:
+        year = years[0] if years else None
+
+    return render_template(
+        'account/wrapped.html',
+        wrapped=build_wrapped(user_id, year) if year is not None else None,
+        years=years,
+        year=year,
+        user_id=user_id,
+        own=user_id == current_user.id,
+    )
 
 
 @account_bp.route('/pin', methods=['GET', 'POST'])

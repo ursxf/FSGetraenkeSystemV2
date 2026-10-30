@@ -97,6 +97,7 @@ class Streak:
 
 @dataclass
 class Buddies:
+    ids: tuple[int, int]
     names: tuple[str, str]
     days: int  # number of days on which both bought within BUDDY_WINDOW of each other
 
@@ -333,8 +334,11 @@ def _streaks(
     return sorted(streaks, key=lambda s: (-s.days, s.end))[:STREAK_LIMIT]
 
 
-def _buddies(purchases: list[Purchase], user_names: dict[int, str]) -> list[Buddies]:
-    """Pairs of users who often buy within BUDDY_WINDOW of each other, counted as days together."""
+def _buddies(purchases: list[Purchase], user_names: dict[int, str], user: Optional[int] = None) -> list[Buddies]:
+    """Pairs of users who often buy within BUDDY_WINDOW of each other, counted as days together.
+
+    *purchases* must contain the purchases of all users. With *user* only pairs including that user are returned.
+    """
     together: dict[tuple[int, int], set[date]] = defaultdict(set)
     ordered = sorted(purchases, key=lambda p: p.date)
     for i, purchase in enumerate(ordered):
@@ -346,10 +350,113 @@ def _buddies(purchases: list[Purchase], user_names: dict[int, str]) -> list[Budd
                 together[pair].add(purchase.date.date())
 
     buddies = [
-        Buddies(names=(user_names.get(a, f'#{a}'), user_names.get(b, f'#{b}')), days=len(days))
+        Buddies(ids=(a, b), names=(user_names.get(a, f'#{a}'), user_names.get(b, f'#{b}')), days=len(days))
         for (a, b), days in together.items()
+        if user is None or user in (a, b)
     ]
     return sorted(buddies, key=lambda b: (-b.days, b.names))[:BUDDY_LIMIT]
+
+
+@dataclass
+class Wrapped:
+    """A user's personal year in review."""
+
+    year: int
+    name: str
+    count: int
+    amount: int
+    active_days: int
+    top_products: list[tuple[str, int]]
+    favorite_share: float
+    busiest_day: tuple[date, int]
+    weekday: str
+    hour: int
+    persona: tuple[str, str]  # (emoji, title)
+    first_purchase: tuple[datetime, str]
+    rank: int
+    users: int  # users with at least one purchase in that year
+    streak: Optional[Streak]
+    buddy: Optional[tuple[str, int]]
+    change: Optional[float]  # purchases compared with the previous year in percent
+    running: bool  # the year is not over yet
+
+
+def _persona(hour: int) -> tuple[str, str]:
+    if hour < 5:
+        return '🦉', 'Night Owl'
+    if hour < 12:
+        return '🐦', 'Early Bird'
+    if hour < 17:
+        return '☀️', 'Afternoon Regular'
+    if hour < 21:
+        return '🌆', 'Evening Sipper'
+    return '🦉', 'Night Owl'
+
+
+def wrapped_years(user_id: int) -> list[int]:
+    """Years in which the user bought something, newest first."""
+    tz = _local_tz()
+    stmt = db.select(Revenue.date).where(Revenue.user == user_id, Revenue.product.isnot(None))
+    return sorted({_to_local(d, tz).year for d in db.session.execute(stmt).scalars() if d is not None}, reverse=True)
+
+
+def build_wrapped(user_id: int, year: int) -> Optional[Wrapped]:
+    """Compute the year in review of *user_id*, None if the user bought nothing in *year*."""
+    tz = _local_tz()
+    today = datetime.now(tz).date()
+    product_names = dict(db.session.execute(db.select(Product.id, Product.name)).all())
+    user_names = dict(db.session.execute(db.select(User.id, User.name)).all())
+
+    everything = _load_purchases(tz, 'all')
+    year_all = [p for p in everything if p.date.year == year]
+    mine = sorted((p for p in year_all if p.user == user_id), key=lambda p: p.date)
+    if not mine:
+        return None
+
+    per_product = Counter(p.product for p in mine)
+    top_products = sorted(per_product.items(), key=lambda item: (-item[1], product_names.get(item[0], '')))[:3]
+    per_weekday = Counter(p.date.weekday() for p in mine)
+    per_hour = Counter(p.date.hour for p in mine)
+    hour = min(per_hour, key=lambda h: (-per_hour[h], h))
+
+    per_user = Counter(p.user for p in year_all)
+    rank = 1 + sum(1 for count in per_user.values() if count > per_user[user_id])
+
+    running = year == today.year
+    open_days = sorted({p.date.date() for p in year_all})
+    streaks = _streaks(mine, open_days, user_names, running)
+    buddies = _buddies(year_all, user_names, user=user_id)
+    buddy = None
+    if buddies:
+        other = buddies[0].ids[1] if buddies[0].ids[0] == user_id else buddies[0].ids[0]
+        buddy = (user_names.get(other, f'#{other}'), buddies[0].days)
+
+    # Compare with the same span of the previous year (up to today while the year is running)
+    cutoff = _shift_year(today, -1) if running else date(year - 1, 12, 31)
+    previous = sum(1 for p in everything if p.user == user_id and p.date.year == year - 1 and p.date.date() <= cutoff)
+    first_ever = min(p.date.date() for p in everything)
+    change = Comparison.delta(len(mine), previous) if first_ever.year < year else None
+
+    return Wrapped(
+        year=year,
+        name=user_names.get(user_id, f'#{user_id}'),
+        count=len(mine),
+        amount=sum(p.amount for p in mine),
+        active_days=len({p.date.date() for p in mine}),
+        top_products=[(product_names.get(pid, f'#{pid}'), count) for pid, count in top_products],
+        favorite_share=top_products[0][1] / len(mine),
+        busiest_day=_busiest_day(Counter(p.date.date() for p in mine)),  # type: ignore[arg-type]
+        weekday=calendar.day_name[min(per_weekday, key=lambda d: (-per_weekday[d], d))],
+        hour=hour,
+        persona=_persona(hour),
+        first_purchase=(mine[0].date, product_names.get(mine[0].product, '?')),
+        rank=rank,
+        users=len(per_user),
+        streak=streaks[0] if streaks else None,
+        buddy=buddy,
+        change=change,
+        running=running,
+    )
 
 
 def _parse_int(value: Optional[str], minimum: int, maximum: int) -> Optional[int]:
@@ -378,7 +485,13 @@ def index() -> str:
     product_names = dict(db.session.execute(db.select(Product.id, Product.name)).all())
     user_names = dict(db.session.execute(db.select(User.id, User.name)).all())
 
-    all_purchases = _load_purchases(tz, product_selection)
+    # Optional user filter: ?user=<id>
+    selected_user = _parse_int(request.args.get('user'), 1, 2**31)
+    if selected_user not in user_names:
+        selected_user = None
+
+    everyone = _load_purchases(tz, product_selection)  # all users, needed for the drinking buddies
+    all_purchases = everyone if selected_user is None else [p for p in everyone if p.user == selected_user]
     start, end = _period_bounds(year, month)
     purchases = [p for p in all_purchases if start is None or start <= p.date.date() < end]  # type: ignore[operator]
 
@@ -387,17 +500,19 @@ def index() -> str:
     years = _year_summaries(all_purchases, today)
     comparison = _comparison(all_purchases, year, month, today, first_day)
 
-    # Open days for the streaks: days on which anything at all was bought (independent of the product filter)
-    everything = all_purchases if product_selection == 'all' else _load_purchases(tz, 'all')
+    # Open days for the streaks: days on which anything at all was bought (independent of product and user filter)
+    everything = everyone if product_selection == 'all' else _load_purchases(tz, 'all')
     open_days = sorted(
         {p.date.date() for p in everything if start is None or start <= p.date.date() < end}  # type: ignore[operator]
     )
     running = end is None or end > today
     streaks = _streaks(purchases, open_days, user_names, running) if open_days else []
-    buddies = _buddies(purchases, user_names)
+    period_everyone = [p for p in everyone if start is None or start <= p.date.date() < end]  # type: ignore[operator]
+    buddies = _buddies(period_everyone, user_names, user=selected_user)
 
-    first_year = first_day.year
+    first_year = min((p.date.year for p in everything), default=today.year)
     products = db.session.execute(db.select(Product).order_by(Product.name)).scalars().all()
+    users = db.session.execute(db.select(User).order_by(User.name)).scalars().all()
 
     return render_template(
         'stats/index.html',
@@ -415,5 +530,8 @@ def index() -> str:
         product_selection=product_selection,
         product_groups=PRODUCT_GROUPS,
         products=products,
+        users=users,
+        selected_user=selected_user,
+        selected_user_name=user_names.get(selected_user) if selected_user else None,
         top_limit=TOP_LIMIT,
     )

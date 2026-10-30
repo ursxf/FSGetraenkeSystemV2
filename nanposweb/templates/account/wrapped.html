@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Wrapped{% endblock %}
+
+{% block additional_styles %}
+<style>
+    .wrapped-card {
+        border-radius: 1.25rem; color: #fff; padding: 1.75rem; height: 100%;
+        display: flex; flex-direction: column; justify-content: space-between; min-height: 15rem;
+        box-shadow: 0 .5rem 1.5rem rgba(0, 0, 0, .12);
+    }
+    .wrapped-card .w-label { text-transform: uppercase; letter-spacing: .08em; font-size: .8rem; opacity: .85; }
+    .wrapped-card .w-value { font-size: 3rem; font-weight: 700; line-height: 1.1; word-break: break-word; }
+    .wrapped-card .w-text { font-size: 1.05rem; opacity: .95; }
+    .wrapped-card .w-emoji { font-size: 3rem; line-height: 1; }
+    .wrapped-card ol { padding-left: 1.25rem; margin-bottom: 0; font-size: 1.1rem; }
+    .wrapped-hero { min-height: 18rem; }
+    .wrapped-hero .w-value { font-size: 4.5rem; }
+    .wg-1 { background: linear-gradient(135deg, #4f46e5, #9333ea); }
+    .wg-2 { background: linear-gradient(135deg, #db2777, #f97316); }
+    .wg-3 { background: linear-gradient(135deg, #0f766e, #0891b2); }
+    .wg-4 { background: linear-gradient(135deg, #1e3a8a, #2563eb); }
+    .wg-5 { background: linear-gradient(135deg, #b45309, #d97706); }
+    .wg-6 { background: linear-gradient(135deg, #be123c, #e11d48); }
+    .wg-7 { background: linear-gradient(135deg, #166534, #16a34a); }
+    .wg-8 { background: linear-gradient(135deg, #374151, #111827); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 my-3">
+    <h2 class="mb-0 me-auto">
+        {% if wrapped %}{{ wrapped.name if not own else 'Your' }}{{ "'s" if not own }} {{ year }} Wrapped{% else %}Wrapped{% endif %}
+    </h2>
+    {% if years | length > 1 %}
+    <form method="get" class="d-flex align-items-center gap-2">
+        {% if not own %}<input type="hidden" name="user" value="{{ user_id }}">{% endif %}
+        <label for="year" class="text-muted">Year</label>
+        <select class="form-select" name="year" id="year" onchange="this.form.submit()">
+            {% for y in years %}
+            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+            {% endfor %}
+        </select>
+    </form>
+    {% endif %}
+</div>
+
+{% if not own %}
+<div class="alert alert-info py-2"><i class="fa-solid fa-user-shield me-1"></i> Admin view of another user's Wrapped.</div>
+{% endif %}
+
+{% if wrapped is none %}
+<div class="alert alert-secondary">No purchases yet – come back once you've had your first drink!</div>
+{% else %}
+{% set w = wrapped %}
+<div class="row g-4 mb-5">
+    <!-- Hero -->
+    <div class="col-12">
+        <div class="wrapped-card wrapped-hero wg-1">
+            <div class="w-label">{{ w.year }}{% if w.running %} so far{% endif %}</div>
+            <div>
+                <div class="w-value">{{ w.count }}</div>
+                <div class="w-text fs-4">purchases on {{ w.active_days }} day{{ 's' if w.active_days != 1 }} · {{ w.amount | format_currency }} spent</div>
+            </div>
+            <div class="w-text">
+                {% if w.change is none %}Your first year with NANPOS – welcome!
+                {% elif w.change >= 0.5 %}<i class="fa-solid fa-arrow-trend-up"></i> {{ '%.0f' | format(w.change) }} % more than {{ w.year - 1 }}{% if w.running %} at this point{% endif %}.
+                {% elif w.change <= -0.5 %}<i class="fa-solid fa-arrow-trend-down"></i> {{ '%.0f' | format(-w.change) }} % less than {{ w.year - 1 }}{% if w.running %} at this point{% endif %}.
+                {% else %}Exactly as much as {{ w.year - 1 }}. Consistency!{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Favorite -->
+    <div class="col-md-6 col-xl-4">
+        <div class="wrapped-card wg-2">
+            <div class="w-label">Your number one</div>
+            <div>
+                <div class="w-value">{{ w.top_products[0][0] }}</div>
+                <div class="w-text">{{ w.top_products[0][1] }} × – that's {{ '%.0f' | format(w.favorite_share * 100) }} % of everything you bought.</div>
+            </div>
+            {% if w.top_products | length > 1 %}
+            <ol start="2">
+                {% for name, count in w.top_products[1:] %}<li>{{ name }} <span class="opacity-75">({{ count }} ×)</span></li>{% endfor %}
+            </ol>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Rank -->
+    <div class="col-md-6 col-xl-4">
+        <div class="wrapped-card wg-4">
+            <div class="w-label">Your rank</div>
+            <div class="w-value">#{{ w.rank }}</div>
+            <div class="w-text">
+                {% if w.rank == 1 %}Nobody bought more than you. Legendary. 🏆
+                {% else %}of {{ w.users }} people – you're in the top {{ ((w.rank / w.users) * 100) | round(0, 'ceil') | int }} %.{% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Persona -->
+    <div class="col-md-6 col-xl-4">
+        <div class="wrapped-card wg-8">
+            <div class="w-label">Your drinking personality</div>
+            <div>
+                <div class="w-emoji mb-2">{{ w.persona[0] }}</div>
+                <div class="w-value">{{ w.persona[1] }}</div>
+            </div>
+            <div class="w-text">Most of your purchases happen between {{ '%02d' | format(w.hour) }}:00 and {{ '%02d' | format((w.hour + 1) % 24) }}:00.</div>
+        </div>
+    </div>
+
+    <!-- Weekday & busiest day -->
+    <div class="col-md-6 col-xl-4">
+        <div class="wrapped-card wg-3">
+            <div class="w-label">Your favorite day</div>
+            <div class="w-value">{{ w.weekday }}</div>
+            <div class="w-text">
+                Your biggest day was <strong>{{ w.busiest_day[0].strftime('%d.%m.') }}</strong>
+                with {{ w.busiest_day[1] }} purchase{{ 's' if w.busiest_day[1] != 1 }}.
+            </div>
+        </div>
+    </div>
+
+    <!-- Streak -->
+    <div class="col-md-6 col-xl-4">
+        <div class="wrapped-card wg-6">
+            <div class="w-label">Your longest streak</div>
+            {% if w.streak %}
+            <div>
+                <div class="w-value">{{ w.streak.days }} days {% if w.streak.ongoing %}🔥{% endif %}</div>
+                <div class="w-text">in a row, from {{ w.streak.start.strftime('%d.%m.') }} to {{ w.streak.end.strftime('%d.%m.') }}{% if w.streak.ongoing %} – and still going!{% endif %}</div>
+            </div>
+            <div class="w-text small opacity-75">Days on which nobody bought anything don't count.</div>
+            {% else %}
+            <div class="w-value">–</div>
+            <div class="w-text">No streak yet. Two days in a row would be a start!</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Buddy -->
+    <div class="col-md-6 col-xl-4">
+        <div class="wrapped-card wg-7">
+            <div class="w-label">Your drinking buddy</div>
+            {% if w.buddy %}
+            <div>
+                <div class="w-emoji mb-2">🍻</div>
+                <div class="w-value">{{ w.buddy[0] }}</div>
+            </div>
+            <div class="w-text">You two bought within minutes of each other on {{ w.buddy[1] }} day{{ 's' if w.buddy[1] != 1 }}.</div>
+            {% else %}
+            <div class="w-value">–</div>
+            <div class="w-text">A lone wolf this year. 🐺</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- First purchase -->
+    <div class="col-12">
+        <div class="wrapped-card wg-5" style="min-height: auto;">
+            <div class="w-label mb-2">Where it all started</div>
+            <div class="w-text fs-4">
+                Your first purchase of {{ w.year }} was a <strong>{{ w.first_purchase[1] }}</strong>
+                on {{ w.first_purchase[0].strftime('%d.%m.') }} at {{ w.first_purchase[0].strftime('%H:%M') }}.
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
