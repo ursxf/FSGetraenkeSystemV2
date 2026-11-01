@@ -29,15 +29,15 @@
 {% block content %}
 <div class="d-flex flex-wrap align-items-center gap-2 my-3">
     <h2 class="mb-0 me-auto">
-        {% if wrapped %}{{ wrapped.name if not own else 'Your' }}{{ "'s" if not own }} {{ year }} Wrapped{% else %}Wrapped{% endif %}
+        {% if wrapped %}{{ wrapped.name if not own else 'Your' }}{{ "'s" if not own }} Wrapped · {{ semester.name }}{% else %}Wrapped{% endif %}
     </h2>
-    {% if years | length > 1 %}
+    {% if semesters | length > 1 %}
     <form method="get" class="d-flex align-items-center gap-2">
         {% if not own %}<input type="hidden" name="user" value="{{ user_id }}">{% endif %}
-        <label for="year" class="text-muted">Year</label>
-        <select class="form-select" name="year" id="year" onchange="this.form.submit()">
-            {% for y in years %}
-            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+        <label for="semester" class="text-muted">Semester</label>
+        <select class="form-select" name="semester" id="semester" onchange="this.form.submit()">
+            {% for s in semesters %}
+            <option value="{{ s.key }}" {% if s == semester %}selected{% endif %}>{{ s.name }}</option>
             {% endfor %}
         </select>
     </form>
@@ -47,25 +47,40 @@
 {% if not own %}
 <div class="alert alert-info py-2"><i class="fa-solid fa-user-shield me-1"></i> Admin view of another user's Wrapped.</div>
 {% endif %}
+{% if current_user.isop %}
+<div class="alert alert-light border py-2 small">
+    {% if open_semester %}Users can see their Wrapped of {{ open_semester.name }} until {{ window_date.strftime('%d.%m.%Y') }}.
+    {% else %}Wrapped is currently hidden for users. It opens again on {{ window_date.strftime('%d.%m.%Y') }}.{% endif %}
+</div>
+{% endif %}
 
 {% if wrapped is none %}
-<div class="alert alert-secondary">No purchases yet – come back once you've had your first drink!</div>
+{% if open_semester is none and not current_user.isop %}
+<div class="alert alert-secondary">
+    Your Wrapped is only available at the beginning of a semester.
+    Come back on {{ window_date.strftime('%d.%m.%Y') }} to see how your semester went!
+</div>
+{% elif open_semester and not current_user.isop %}
+<div class="alert alert-secondary">You didn't buy anything in {{ open_semester.name }} – nothing to wrap up this time.</div>
+{% else %}
+<div class="alert alert-secondary">No purchases in a finished semester yet.</div>
+{% endif %}
 {% else %}
 {% set w = wrapped %}
 <div class="row g-4 mb-5">
     <!-- Hero -->
     <div class="col-12">
         <div class="wrapped-card wrapped-hero wg-1">
-            <div class="w-label">{{ w.year }}{% if w.running %} so far{% endif %}</div>
+            <div class="w-label">{{ w.semester.name }}</div>
             <div>
                 <div class="w-value">{{ w.count }}</div>
                 <div class="w-text fs-4">purchases on {{ w.active_days }} day{{ 's' if w.active_days != 1 }} · {{ w.amount | format_currency }} spent</div>
             </div>
             <div class="w-text">
-                {% if w.change is none %}Your first year with NANPOS – welcome!
-                {% elif w.change >= 0.5 %}<i class="fa-solid fa-arrow-trend-up"></i> {{ '%.0f' | format(w.change) }} % more than {{ w.year - 1 }}{% if w.running %} at this point{% endif %}.
-                {% elif w.change <= -0.5 %}<i class="fa-solid fa-arrow-trend-down"></i> {{ '%.0f' | format(-w.change) }} % less than {{ w.year - 1 }}{% if w.running %} at this point{% endif %}.
-                {% else %}Exactly as much as {{ w.year - 1 }}. Consistency!{% endif %}
+                {% if w.change is none %}Your first semester with NANPOS – welcome!
+                {% elif w.change >= 0.5 %}<i class="fa-solid fa-arrow-trend-up"></i> {{ '%.0f' | format(w.change) }} % more than in {{ w.semester.previous.name }}.
+                {% elif w.change <= -0.5 %}<i class="fa-solid fa-arrow-trend-down"></i> {{ '%.0f' | format(-w.change) }} % less than in {{ w.semester.previous.name }}.
+                {% else %}Exactly as much as in {{ w.semester.previous.name }}. Consistency!{% endif %}
             </div>
         </div>
     </div>
@@ -128,8 +143,8 @@
             <div class="w-label">Your longest streak</div>
             {% if w.streak %}
             <div>
-                <div class="w-value">{{ w.streak.days }} days {% if w.streak.ongoing %}🔥{% endif %}</div>
-                <div class="w-text">in a row, from {{ w.streak.start.strftime('%d.%m.') }} to {{ w.streak.end.strftime('%d.%m.') }}{% if w.streak.ongoing %} – and still going!{% endif %}</div>
+                <div class="w-value">{{ w.streak.days }} days</div>
+                <div class="w-text">in a row, from {{ w.streak.start.strftime('%d.%m.') }} to {{ w.streak.end.strftime('%d.%m.') }}</div>
             </div>
             <div class="w-text small opacity-75">Days on which nobody bought anything don't count.</div>
             {% else %}
@@ -151,7 +166,7 @@
             <div class="w-text">You two bought within minutes of each other on {{ w.buddy[1] }} day{{ 's' if w.buddy[1] != 1 }}.</div>
             {% else %}
             <div class="w-value">–</div>
-            <div class="w-text">A lone wolf this year. 🐺</div>
+            <div class="w-text">A lone wolf this semester. 🐺</div>
             {% endif %}
         </div>
     </div>
@@ -161,7 +176,7 @@
         <div class="wrapped-card wg-5" style="min-height: auto;">
             <div class="w-label mb-2">Where it all started</div>
             <div class="w-text fs-4">
-                Your first purchase of {{ w.year }} was a <strong>{{ w.first_purchase[1] }}</strong>
+                Your first purchase in {{ w.semester.name }} was a <strong>{{ w.first_purchase[1] }}</strong>
                 on {{ w.first_purchase[0].strftime('%d.%m.') }} at {{ w.first_purchase[0].strftime('%H:%M') }}.
             </div>
         </div>

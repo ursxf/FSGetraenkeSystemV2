@@ -10,6 +10,7 @@ from werkzeug.wrappers import Response
 
 from .account import account_bp
 from .admin import admin_bp
+from .admin.stats import local_today, wrapped_window
 from .auth import auth_bp
 from .db import db
 from .db.helpers import get_balance
@@ -107,6 +108,10 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
     def get_version() -> dict:
         version = 'devel' if nanposweb_app.debug else metadata.version('nanposweb')
         return {'version': version}
+
+    @nanposweb_app.context_processor
+    def wrapped_open() -> dict:
+        return {'wrapped_open': wrapped_window(local_today())[0] is not None}
 
     @nanposweb_app.context_processor
     def get_utils() -> dict:

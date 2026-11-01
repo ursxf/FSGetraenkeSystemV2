@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers import Response
 from wtforms.validators import InputRequired
 
-from .admin.stats import build_wrapped, wrapped_years
+from .admin.stats import Semester, build_wrapped, local_today, wrapped_semesters, wrapped_window
 from .db import db
 from .db.helpers import revenue_query
 from .db.models import User
@@ -27,7 +27,11 @@ def revenues() -> str:
 @account_bp.route('/wrapped')
 @login_required
 def wrapped() -> str:
-    """Personal year in review. Admins can open it for other users with ?user=<id>."""
+    """Personal semester in review. Admins can open it for other users with ?user=<id>.
+
+    Users only see the Wrapped of the previous semester during the first months of a semester,
+    admins can see every finished semester at any time.
+    """
     user_id = current_user.id
     requested = request.args.get('user', type=int)
     if requested is not None and requested != current_user.id:
@@ -37,16 +41,21 @@ def wrapped() -> str:
             abort(404)
         user_id = requested
 
-    years = wrapped_years(user_id)
-    year = request.args.get('year', type=int)
-    if year not in years:
-        year = years[0] if years else None
+    open_semester, window_date = wrapped_window(local_today())
+    semesters = wrapped_semesters(user_id)
+    if not current_user.isop:
+        semesters = [s for s in semesters if s == open_semester]
+    semester = Semester.parse(request.args.get('semester'))
+    if semester not in semesters:
+        semester = semesters[0] if semesters else None
 
     return render_template(
         'account/wrapped.html',
-        wrapped=build_wrapped(user_id, year) if year is not None else None,
-        years=years,
-        year=year,
+        wrapped=build_wrapped(user_id, semester) if semester is not None else None,
+        semesters=semesters,
+        semester=semester,
+        open_semester=open_semester,
+        window_date=window_date,
         user_id=user_id,
         own=user_id == current_user.id,
     )

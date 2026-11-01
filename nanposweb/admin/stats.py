@@ -27,6 +27,7 @@ TOP_LIMIT = 10
 STREAK_LIMIT = 5
 BUDDY_LIMIT = 10
 BUDDY_WINDOW = timedelta(minutes=10)  # two purchases this close together count as "drinking together"
+WRAPPED_MONTHS = 2  # the Wrapped of the previous semester can be seen during the first months of a semester
 
 # Product filter groups shown above the product list in the filter select
 PRODUCT_GROUPS = {
@@ -357,11 +358,78 @@ def _buddies(purchases: list[Purchase], user_names: dict[int, str], user: Option
     return sorted(buddies, key=lambda b: (-b.days, b.names))[:BUDDY_LIMIT]
 
 
+@dataclass(frozen=True)
+class Semester:
+    """Wintersemester: 1 Oct to 31 Mar, Sommersemester: 1 Apr to 30 Sep."""
+
+    winter: bool
+    year: int  # year in which the semester starts
+
+    @classmethod
+    def of(cls, day: date) -> 'Semester':
+        if day.month >= 10:
+            return cls(True, day.year)
+        if day.month >= 4:
+            return cls(False, day.year)
+        return cls(True, day.year - 1)
+
+    @classmethod
+    def parse(cls, key: Optional[str]) -> Optional['Semester']:
+        """Parse keys like "ws2026" or "ss2026"."""
+        if not key or len(key) != 6 or key[:2] not in ('ws', 'ss') or not key[2:].isdigit():
+            return None
+        return cls(key[:2] == 'ws', int(key[2:]))
+
+    @property
+    def key(self) -> str:
+        return f'{"ws" if self.winter else "ss"}{self.year}'
+
+    @property
+    def name(self) -> str:
+        if self.winter:
+            return f'Wintersemester {self.year % 100:02d}/{(self.year + 1) % 100:02d}'
+        return f'Sommersemester {self.year % 100:02d}'
+
+    @property
+    def start(self) -> date:
+        return date(self.year, 10 if self.winter else 4, 1)
+
+    @property
+    def end(self) -> date:
+        """First day after the semester."""
+        return date(self.year + 1, 4, 1) if self.winter else date(self.year, 10, 1)
+
+    @property
+    def previous(self) -> 'Semester':
+        return Semester(False, self.year) if self.winter else Semester(True, self.year - 1)
+
+    def __contains__(self, day: date) -> bool:
+        return self.start <= day < self.end
+
+
+def local_today() -> date:
+    return datetime.now(_local_tz()).date()
+
+
+def wrapped_window(today: date) -> tuple[Optional[Semester], date]:
+    """The semester whose Wrapped is open to everyone today (None outside the window) and a date.
+
+    During the first WRAPPED_MONTHS months of a semester everyone can see the Wrapped of the previous one.
+    Inside the window the date is the last day of the window, outside it the day the next window opens.
+    """
+    current = Semester.of(today)
+    start = current.start
+    window_end = date(start.year + (start.month + WRAPPED_MONTHS - 1) // 12, (start.month + WRAPPED_MONTHS - 1) % 12 + 1, 1)
+    if today < window_end:
+        return current.previous, window_end - timedelta(days=1)
+    return None, current.end
+
+
 @dataclass
 class Wrapped:
-    """A user's personal year in review."""
+    """A user's personal semester in review."""
 
-    year: int
+    semester: Semester
     name: str
     count: int
     amount: int
@@ -374,11 +442,10 @@ class Wrapped:
     persona: tuple[str, str]  # (emoji, title)
     first_purchase: tuple[datetime, str]
     rank: int
-    users: int  # users with at least one purchase in that year
+    users: int  # users with at least one purchase in that semester
     streak: Optional[Streak]
     buddy: Optional[tuple[str, int]]
-    change: Optional[float]  # purchases compared with the previous year in percent
-    running: bool  # the year is not over yet
+    change: Optional[float]  # purchases compared with the previous semester in percent
 
 
 def _persona(hour: int) -> tuple[str, str]:
@@ -393,23 +460,24 @@ def _persona(hour: int) -> tuple[str, str]:
     return '🦉', 'Night Owl'
 
 
-def wrapped_years(user_id: int) -> list[int]:
-    """Years in which the user bought something, newest first."""
+def wrapped_semesters(user_id: int) -> list[Semester]:
+    """Finished semesters in which the user bought something, newest first."""
     tz = _local_tz()
+    current = Semester.of(datetime.now(tz).date())
     stmt = db.select(Revenue.date).where(Revenue.user == user_id, Revenue.product.isnot(None))
-    return sorted({_to_local(d, tz).year for d in db.session.execute(stmt).scalars() if d is not None}, reverse=True)
+    semesters = {Semester.of(_to_local(d, tz).date()) for d in db.session.execute(stmt).scalars() if d is not None}
+    return sorted((s for s in semesters if s.end <= current.start), key=lambda s: s.start, reverse=True)
 
 
-def build_wrapped(user_id: int, year: int) -> Optional[Wrapped]:
-    """Compute the year in review of *user_id*, None if the user bought nothing in *year*."""
+def build_wrapped(user_id: int, semester: Semester) -> Optional[Wrapped]:
+    """Compute the semester in review of *user_id*, None if the user bought nothing in *semester*."""
     tz = _local_tz()
-    today = datetime.now(tz).date()
     product_names = dict(db.session.execute(db.select(Product.id, Product.name)).all())
     user_names = dict(db.session.execute(db.select(User.id, User.name)).all())
 
     everything = _load_purchases(tz, 'all')
-    year_all = [p for p in everything if p.date.year == year]
-    mine = sorted((p for p in year_all if p.user == user_id), key=lambda p: p.date)
+    semester_all = [p for p in everything if p.date.date() in semester]
+    mine = sorted((p for p in semester_all if p.user == user_id), key=lambda p: p.date)
     if not mine:
         return None
 
@@ -419,26 +487,23 @@ def build_wrapped(user_id: int, year: int) -> Optional[Wrapped]:
     per_hour = Counter(p.date.hour for p in mine)
     hour = min(per_hour, key=lambda h: (-per_hour[h], h))
 
-    per_user = Counter(p.user for p in year_all)
+    per_user = Counter(p.user for p in semester_all)
     rank = 1 + sum(1 for count in per_user.values() if count > per_user[user_id])
 
-    running = year == today.year
-    open_days = sorted({p.date.date() for p in year_all})
-    streaks = _streaks(mine, open_days, user_names, running)
-    buddies = _buddies(year_all, user_names, user=user_id)
+    open_days = sorted({p.date.date() for p in semester_all})
+    streaks = _streaks(mine, open_days, user_names, running=False)
+    buddies = _buddies(semester_all, user_names, user=user_id)
     buddy = None
     if buddies:
         other = buddies[0].ids[1] if buddies[0].ids[0] == user_id else buddies[0].ids[0]
         buddy = (user_names.get(other, f'#{other}'), buddies[0].days)
 
-    # Compare with the same span of the previous year (up to today while the year is running)
-    cutoff = _shift_year(today, -1) if running else date(year - 1, 12, 31)
-    previous = sum(1 for p in everything if p.user == user_id and p.date.year == year - 1 and p.date.date() <= cutoff)
+    previous = sum(1 for p in everything if p.user == user_id and p.date.date() in semester.previous)
     first_ever = min(p.date.date() for p in everything)
-    change = Comparison.delta(len(mine), previous) if first_ever.year < year else None
+    change = Comparison.delta(len(mine), previous) if first_ever < semester.start else None
 
     return Wrapped(
-        year=year,
+        semester=semester,
         name=user_names.get(user_id, f'#{user_id}'),
         count=len(mine),
         amount=sum(p.amount for p in mine),
@@ -455,7 +520,6 @@ def build_wrapped(user_id: int, year: int) -> Optional[Wrapped]:
         streak=streaks[0] if streaks else None,
         buddy=buddy,
         change=change,
-        running=running,
     )
 
 

@@ -83,7 +83,7 @@
     <h4 class="mb-0 me-auto">{{ product_label }} · {{ period_label }}{% if selected_user_name %} · {{ selected_user_name }}{% endif %}</h4>
     {% if selected_user %}
     <a class="btn btn-outline-primary btn-sm"
-       href="{{ url_for('account.wrapped', user=selected_user, year=year if year is not none else today.year) }}">
+       href="{{ url_for('account.wrapped', user=selected_user) }}">
         <i class="fa-solid fa-gift"></i> {{ selected_user_name }}'s Wrapped
     </a>
     <a class="btn btn-outline-secondary btn-sm" href="?{{ dict(filter_args, user='') | urlencode }}">
