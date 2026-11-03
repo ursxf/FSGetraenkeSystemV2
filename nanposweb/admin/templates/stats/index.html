@@ -302,13 +302,30 @@
 {% if stats.count %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous"></script>
 <script>
-    const css = getComputedStyle(document.documentElement);
-    const color = css.getPropertyValue('--bs-primary').trim();
-    const ink = css.getPropertyValue('--bs-secondary-color').trim();
-    const grid = css.getPropertyValue('--bs-border-color-translucent').trim();
+    function themeColors() {
+        const css = getComputedStyle(document.documentElement);
+        return {
+            color: css.getPropertyValue('--bs-primary').trim(),
+            ink: css.getPropertyValue('--bs-secondary-color').trim(),
+            grid: css.getPropertyValue('--bs-border-color-translucent').trim(),
+        };
+    }
+    const { color, ink, grid } = themeColors();
+    const charts = [];
+
+    /* Re-color axes and grid when the theme is switched */
+    document.addEventListener('themechange', () => {
+        const colors = themeColors();
+        charts.forEach(chart => {
+            chart.options.scales.x.ticks.color = colors.ink;
+            chart.options.scales.y.ticks.color = colors.ink;
+            chart.options.scales.y.grid.color = colors.grid;
+            chart.update('none');
+        });
+    });
 
     function barChart(id, labels, values, unit, decimals) {
-        new Chart(document.getElementById(id), {
+        charts.push(new Chart(document.getElementById(id), {
             type: 'bar',
             data: { labels, datasets: [{ data: values, backgroundColor: color, hoverBackgroundColor: color,
                                          maxBarThickness: 24, borderRadius: 4, borderSkipped: 'start' }] },
@@ -329,7 +346,7 @@
                          ticks: { color: ink, precision: decimals ? undefined : 0 } },
                 },
             },
-        });
+        }));
     }
 
     barChart('chart-timeline', {{ stats.timeline | map(attribute=0) | list | tojson }},

@@ -2,14 +2,14 @@
 {% block pagetitle %}Revenues{% endblock %}
 
 {% block utilbar %}
-    <div class="navbar navbar-light bg-light">
+    <div class="navbar bg-body-tertiary">
         <div class="container row-cols-auto">
             <div class="row row-cols-auto d-flex ms-auto">
             <div>
-                <span class="nav-link text-dark">User: {{ current_user.name }}</span>
+                <span class="nav-link text-body">User: {{ current_user.name }}</span>
             </div>
             <div>
-                <span class="nav-link text-dark">Balance: {{ macro.render_currency(get_balance(get_user_id())) }}</span>
+                <span class="nav-link text-body">Balance: {{ macro.render_currency(get_balance(get_user_id())) }}</span>
             </div>
             </div>
         </div>

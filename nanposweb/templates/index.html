@@ -4,7 +4,7 @@
 {% set alc_icons = ['beer-mug-empty', 'martini-glass', 'wine-bottle'] %}
 
 {% block utilbar %}
-    <div class="navbar navbar-light bg-light">
+    <div class="navbar bg-body-tertiary">
         <div class="container row-cols-1 row-cols-lg-auto">
             {% if impersonate_user is not none %}
             <div class="d-flex align-items-center me-lg-auto">
@@ -26,10 +26,10 @@
 
             <div class="row row-cols-1 row-cols-lg-auto d-flex ms-auto">
             <div>
-                <span class="nav-link text-dark">User: {{ user_name }}</span>
+                <span class="nav-link text-body">User: {{ user_name }}</span>
             </div>
             <div>
-                <span class="nav-link text-dark">Balance: {{ macro.render_currency(get_balance(get_user_id())) }}</span>
+                <span class="nav-link text-body">Balance: {{ macro.render_currency(get_balance(get_user_id())) }}</span>
             </div>
             </div>
 

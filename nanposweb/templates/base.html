@@ -5,6 +5,27 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+        /* Theme: 'auto' (follow the system), 'light' or 'dark'; stored per browser */
+        (function () {
+            function stored() {
+                try { return localStorage.getItem('theme') || 'auto'; } catch (e) { return 'auto'; }
+            }
+            function resolve(theme) {
+                if (theme !== 'auto') return theme;
+                return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+            window.applyTheme = function (theme) {
+                document.documentElement.setAttribute('data-bs-theme', resolve(theme));
+                document.documentElement.dataset.themeChoice = theme;
+                document.dispatchEvent(new CustomEvent('themechange'));
+            };
+            window.applyTheme(stored());
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+                if (stored() === 'auto') window.applyTheme('auto');
+            });
+        })();
+    </script>
 
     {% block styles %}
     <!-- Bootstrap CSS -->
@@ -89,6 +110,10 @@
                             </ul>
                         </div>
                         {% endif %}
+                        <button type="button" id="theme-toggle" class="btn btn-outline-light my-2 my-lg-0 me-lg-2"
+                            onclick="cycleTheme()" title="Theme">
+                            <i class="fa-solid fa-circle-half-stroke" data-theme-icon></i>
+                        </button>
                         {% if current_user.is_authenticated %}
                         <a href="{{ url_for('auth.logout') }}" role="button"
                             class="btn btn-danger my-2 my-lg-0">Logout</a>
@@ -139,7 +164,7 @@
     </main>
 
     {% if session.get('terminal', False) == False %}
-    <footer class="footer py-3 bg-light flex-grow-0 flex-shrink-0">
+    <footer class="footer py-3 bg-body-tertiary flex-grow-0 flex-shrink-0">
         <div class="container">
             <div class="row">
                 <div class="col-auto text-muted">Version {{ version }}.</div>
@@ -191,6 +216,27 @@
     })
     </script>
     {% endif %}
+    <script>
+        /* Theme switch: auto -> light -> dark -> auto */
+        const themeLabels = { auto: ['circle-half-stroke', 'Theme: system'], light: ['sun', 'Theme: light'], dark: ['moon', 'Theme: dark'] };
+        function renderThemeToggle() {
+            const choice = document.documentElement.dataset.themeChoice || 'auto';
+            const button = document.getElementById('theme-toggle');
+            if (!button) return;
+            const [icon, label] = themeLabels[choice];
+            button.title = label;
+            button.setAttribute('aria-label', label);
+            button.innerHTML = '<i class="fa-solid fa-' + icon + '"></i>';
+        }
+        function cycleTheme() {
+            const order = ['auto', 'light', 'dark'];
+            const next = order[(order.indexOf(document.documentElement.dataset.themeChoice || 'auto') + 1) % order.length];
+            try { localStorage.setItem('theme', next); } catch (e) { }
+            window.applyTheme(next);
+        }
+        document.addEventListener('themechange', renderThemeToggle);
+        document.addEventListener('DOMContentLoaded', renderThemeToggle);
+    </script>
     {% block script %}
     {% endblock %}
 </body>
