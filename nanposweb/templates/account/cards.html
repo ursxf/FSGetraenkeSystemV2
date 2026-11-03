@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block pagetitle %}Cards{% endblock %}
+
+{% block content %}
+    <div class="row justify-content-center my-3">
+        <div class="col-lg-8">
+            <h2 class="mb-3">Your cards</h2>
+            <p class="text-muted">
+                Register every card or key tag you want to use at the terminal. The name only helps you to tell them apart.
+                The card ID is shown on the terminal when you scan an unknown card.
+            </p>
+
+            {% if current_user.cards %}
+            <ul class="list-group mb-4">
+                {% for card in current_user.cards %}
+                <li class="list-group-item d-flex flex-wrap align-items-center gap-2">
+                    <i class="fa-solid fa-id-card-clip text-body-secondary"></i>
+                    <form class="d-flex flex-fill gap-2" method="post" action="{{ url_for('account.rename_card', card_id=card.id) }}">
+                        {{ rename_form.hidden_tag() }}
+                        <input type="text" name="name" class="form-control" value="{{ card.name }}" maxlength="100" required
+                               aria-label="Card name">
+                        <button type="submit" class="btn btn-outline-primary text-nowrap" title="Rename">
+                            <i class="fa-solid fa-pen"></i><span class="d-none d-sm-inline ms-1">Rename</span>
+                        </button>
+                    </form>
+                    {% if card.created %}
+                    <small class="text-body-secondary text-nowrap">added {{ card.created.strftime('%d.%m.%Y') }}</small>
+                    {% endif %}
+                    <form method="post" action="{{ url_for('account.delete_card', card_id=card.id) }}"
+                          data-confirm="Remove card &quot;{{ card.name }}&quot;? It can no longer be used at the terminal."
+                          onsubmit="return confirm(this.dataset.confirm);">
+                        {{ rename_form.hidden_tag() }}
+                        <button type="submit" class="btn btn-outline-danger" title="Remove">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <div class="alert alert-secondary">You have no card yet.</div>
+            {% endif %}
+
+            <h4 class="mb-3">Add a card</h4>
+            <form method="post" action="{{ url_for('account.card') }}">
+                {{ form.csrf_token }}
+                <div class="row g-3 mb-3">
+                    <div class="col-md-5">
+                        <div class="form-floating">
+                            {{ form.card_name(class="form-control") }}
+                            {{ form.card_name.label }}
+                        </div>
+                    </div>
+                    <div class="col-md-7">
+                        <div class="form-floating">
+                            {{ form.card_number(class="form-control") }}
+                            {{ form.card_number.label }}
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    {{ form.add_card(class="col mx-3 btn btn-success") }}
+                    <a role="button" href="{{ url_for('main.index') }}" class="col mx-3 btn btn-secondary">Back</a>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}

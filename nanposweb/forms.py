@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, IntegerField, PasswordField, StringField, SubmitField
-from wtforms.validators import InputRequired, Optional
+from wtforms.validators import InputRequired, Length, Optional
 
 
 class LoginForm(FlaskForm):
@@ -53,13 +53,23 @@ class PinForm(FlaskForm):
 
 
 class CardForm(FlaskForm):
+    card_name = StringField(
+        label='Name',
+        validators=[Length(max=100)],
+        render_kw={'placeholder': 'e.g. Key tag'},
+    )
     card_number = StringField(
         label='Card ID',
+        validators=[InputRequired()],
         render_kw={'placeholder': 'Card ID'},
     )
-    unset_card = BooleanField(
-        label='Unset Card',
+    add_card = SubmitField(
+        label='Add Card',
     )
-    change_card = SubmitField(
-        label='Change Card',
+
+
+class CardRenameForm(FlaskForm):
+    name = StringField(
+        label='Name',
+        validators=[InputRequired(), Length(max=100)],
     )

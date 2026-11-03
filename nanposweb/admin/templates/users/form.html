@@ -17,16 +17,16 @@
             {% endif %}
             {{ macro.render_field(form.name) }}
             <div class="row g-3 mb-3">
-                <div class="col-9">
+                <div class="col-md-5">
+                    <div class="form-floating">
+                        {{ form.card_name(class="form-control") }}
+                        {{ form.card_name.label }}
+                    </div>
+                </div>
+                <div class="col-md-7">
                     <div class="form-floating">
                         {{ form.card(class="form-control") }}
                         {{ form.card.label }}
-                    </div>
-                </div>
-                <div class="col-3 p-3">
-                    <div class="form-check">
-                        {{ form.unset_card(class="form-check-input") }}
-                        {{ form.unset_card.label }}
                     </div>
                 </div>
             </div>
@@ -57,4 +57,30 @@
             </div>
         </form>
     </div>
+    {% if edit and user %}
+    <div class="d-flex justify-content-center mt-4">
+        <div class="w-50">
+            <h5>Cards</h5>
+            {% if user.cards %}
+            <ul class="list-group">
+                {% for card in user.cards %}
+                <li class="list-group-item d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-id-card-clip text-body-secondary"></i>
+                    <span class="me-auto">{{ card.name }}</span>
+                    {% if card.created %}<small class="text-body-secondary">added {{ card.created.strftime('%d.%m.%Y') }}</small>{% endif %}
+                    <form method="post" action="{{ url_for('admin.users.delete_card', user_id=user.id, card_id=card.id) }}"
+                          data-confirm="Remove card &quot;{{ card.name }}&quot; of {{ user.name }}?"
+                          onsubmit="return confirm(this.dataset.confirm);">
+                        {{ form.hidden_tag() }}
+                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove"><i class="fa-solid fa-trash"></i></button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="text-body-secondary">No cards registered.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 {% endblock %}

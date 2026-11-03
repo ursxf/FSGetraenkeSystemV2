@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import BooleanField, DecimalField, IntegerField, PasswordField, StringField, SubmitField
-from wtforms.validators import InputRequired, Optional
+from wtforms.validators import InputRequired, Length, Optional
 
 
 class ProductForm(FlaskForm):
@@ -45,11 +45,13 @@ class UserForm(FlaskForm):
         render_kw={'placeholder': 'name'},
     )
     card = StringField(
-        label='Card ID',
+        label='Add Card ID',
         render_kw={'placeholder': 'Card ID'},
     )
-    unset_card = BooleanField(
-        label='Unset Card',
+    card_name = StringField(
+        label='Card name',
+        validators=[Length(max=100)],
+        render_kw={'placeholder': 'Card name'},
     )
     pin = PasswordField(
         label='PIN',

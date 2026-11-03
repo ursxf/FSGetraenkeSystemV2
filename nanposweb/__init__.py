@@ -13,7 +13,7 @@ from .admin import admin_bp
 from .admin.stats import local_today, wrapped_window
 from .auth import auth_bp
 from .db import db
-from .db.helpers import get_balance
+from .db.helpers import get_balance, migrate_legacy_cards
 from .db.models import User
 from .helpers import format_currency, get_user_id
 from .main import main_bp
@@ -121,6 +121,12 @@ def create_app(test_config: Optional[dict] = None) -> Flask:  # noqa: C901
         if nanposweb_app.config.get('utils', False):
             utils.extend(nanposweb_app.config['utils'])
         return {'utils': utils}
+
+    @nanposweb_app.cli.command('migrate-cards')
+    def migrate_cards() -> None:
+        """Create the cards table and move the old single card of every user into it."""
+        moved = migrate_legacy_cards()
+        print(f'Moved {moved} card(s) into the cards table.')  # noqa: T201
 
     # blueprint for auth routes in our nanposweb_app
     nanposweb_app.register_blueprint(auth_bp)

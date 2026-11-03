@@ -41,6 +41,15 @@ app.app_context().push()
 db.create_all()
 ```
 
+### Upgrading to multiple cards per user
+
+Older versions stored one card per user in `users.card`. Create the new `cards` table and move existing cards into it
+(safe to run more than once, nobody has to register their card again):
+
+```shell
+flask --app nanposweb migrate-cards
+```
+
 create admin user:
 
 ```python

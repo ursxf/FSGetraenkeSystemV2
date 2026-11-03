@@ -1,15 +1,16 @@
 from typing import Union
 
-from flask import Blueprint, flash, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 from flask_login import current_user, login_required
+from flask_wtf import FlaskForm
 from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers import Response
 
 from .forms import BalanceForm, UserForm
 from .helpers import admin_permission
 from ..db import db
-from ..db.helpers import revenue_query
-from ..db.models import Revenue, User
+from ..db.helpers import add_card, revenue_query
+from ..db.models import Card, Revenue, User
 from ..helpers import calc_hash
 
 users_bp = Blueprint('users', __name__, url_prefix='/users')
@@ -46,17 +47,6 @@ def post() -> Union[Response, str]:
         create = True
         user = User()
 
-    new_card_hash = None
-    if not form.unset_card.data and form.card.data:
-        new_card_hash = calc_hash(form.card.data)
-        card_query = User.query.filter(User.card == new_card_hash)
-        if not create:
-            card_query = card_query.filter(User.id != user.id)
-        card_owner = card_query.first()
-        if card_owner is not None:
-            flash(f'This card is already registered to user "{card_owner.name}"', category='danger')
-            return render_template('users/form.html', form=form, edit=not create)
-
     user.name = form.name.data
     user.isop = form.isop.data
 
@@ -65,20 +55,22 @@ def post() -> Union[Response, str]:
     elif form.pin.data:
         user.pin = calc_hash(form.pin.data)
 
-    if form.unset_card.data:
-        user.card = None
-    elif new_card_hash is not None:
-        user.card = new_card_hash
-
     if create:
         db.session.add(user)
+
+    if form.card.data and form.card.data.strip():
+        _, error = add_card(user, form.card.data, form.card_name.data)
+        if error is not None:
+            db.session.rollback()
+            flash(error, category='danger')
+            return render_template('users/form.html', form=form, edit=not create, user=None if create else user)
 
     try:
         db.session.commit()
     except IntegrityError:
         db.session.rollback()
         flash('Could not save user: name or card is already registered to another user', category='danger')
-        return render_template('users/form.html', form=form, edit=not create)
+        return render_template('users/form.html', form=form, edit=not create, user=None if create else User.query.get(form.id.data))
 
     if create:
         flash(f'Created user {form.name.data}', category='success')
@@ -161,7 +153,23 @@ def edit(user_id: int) -> str:
     user = User.query.get(user_id)
     form = UserForm(id=user.id, name=user.name, isop=user.isop)
 
-    return render_template('users/form.html', form=form, edit=True)
+    return render_template('users/form.html', form=form, edit=True, user=user)
+
+
+@users_bp.route('/edit/<int:user_id>/card/<int:card_id>/delete', methods=['POST'])
+@login_required
+@admin_permission.require(http_exception=401)
+def delete_card(user_id: int, card_id: int) -> Response:
+    card = Card.query.get(card_id)
+    if card is None or card.user != user_id:
+        abort(404)
+    if FlaskForm().validate_on_submit():
+        db.session.delete(card)
+        db.session.commit()
+        flash(f'Removed card "{card.name}"', category='success')
+    else:
+        flash('Submitted form was not valid!', category='danger')
+    return redirect(url_for('admin.users.edit', user_id=user_id))
 
 
 @users_bp.route('/delete/<user_id>')

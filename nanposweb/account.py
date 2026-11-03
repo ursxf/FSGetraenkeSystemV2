@@ -2,15 +2,16 @@ from typing import Union
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from flask_wtf import FlaskForm
 from sqlalchemy.exc import IntegrityError
 from werkzeug.wrappers import Response
 from wtforms.validators import InputRequired
 
 from .admin.stats import Semester, build_wrapped, local_today, wrapped_semesters, wrapped_window
 from .db import db
-from .db.helpers import revenue_query
-from .db.models import User
-from .forms import CardForm, PinForm
+from .db.helpers import add_card, revenue_query
+from .db.models import Card, User
+from .forms import CardForm, CardRenameForm, PinForm
 from .helpers import calc_hash, check_hash
 
 account_bp = Blueprint('account', __name__, url_prefix='/account')
@@ -104,6 +105,13 @@ def pin() -> Union[Response, str]:
     return render_template('account/change_pin.html', form=form)
 
 
+def _own_card(card_id: int) -> Card:
+    card = Card.query.get(card_id)
+    if card is None or card.user != current_user.id:
+        abort(404)
+    return card
+
+
 @account_bp.route('/card', methods=['GET', 'POST'])
 @login_required
 def card() -> Union[Response, str]:
@@ -111,33 +119,47 @@ def card() -> Union[Response, str]:
 
     if request.method == 'POST':
         if form.validate_on_submit():
-            if form.unset_card.data:
-                current_user.card = None
-                success_message = 'Unset Card'
-            else:
-                if not form.card_number.data:
-                    flash('Card number has no value', category='danger')
-                    return render_template('account/change_card.html', form=form)
-                card_hash = calc_hash(form.card_number.data)
-                existing_user = db.session.execute(
-                    db.select(User).where(User.card == card_hash, User.id != current_user.id)
-                ).scalars().first()
-                if existing_user is not None:
-                    flash('This card is already registered to another user', category='danger')
-                    return render_template('account/change_card.html', form=form)
-                current_user.card = card_hash
-                success_message = 'Changed Card'
+            new_card, error = add_card(current_user, form.card_number.data or '', form.card_name.data)
+            if error is None:
+                try:
+                    db.session.commit()
+                except IntegrityError:
+                    db.session.rollback()
+                    error = 'This card is already registered to another user'
+            if error is not None:
+                flash(error, category='danger')
+                return render_template('account/cards.html', form=form, rename_form=CardRenameForm())
 
-            try:
-                db.session.commit()
-            except IntegrityError:
-                db.session.rollback()
-                flash('This card is already registered to another user', category='danger')
-                return render_template('account/change_card.html', form=form)
-
-            flash(success_message, category='success')
-            return redirect(url_for('main.index'))
+            flash(f'Added card "{new_card.name}"', category='success')
+            return redirect(url_for('account.card'))
 
         flash('Submitted form was not valid!', category='danger')
 
-    return render_template('account/change_card.html', form=form)
+    return render_template('account/cards.html', form=form, rename_form=CardRenameForm())
+
+
+@account_bp.route('/card/<int:card_id>/rename', methods=['POST'])
+@login_required
+def rename_card(card_id: int) -> Response:
+    card = _own_card(card_id)
+    form = CardRenameForm()
+    if form.validate_on_submit() and form.name.data.strip():
+        card.name = form.name.data.strip()
+        db.session.commit()
+        flash(f'Renamed card to "{card.name}"', category='success')
+    else:
+        flash('Submitted form was not valid!', category='danger')
+    return redirect(url_for('account.card'))
+
+
+@account_bp.route('/card/<int:card_id>/delete', methods=['POST'])
+@login_required
+def delete_card(card_id: int) -> Response:
+    card = _own_card(card_id)
+    if FlaskForm().validate_on_submit():
+        db.session.delete(card)
+        db.session.commit()
+        flash(f'Removed card "{card.name}"', category='success')
+    else:
+        flash('Submitted form was not valid!', category='danger')
+    return redirect(url_for('account.card'))

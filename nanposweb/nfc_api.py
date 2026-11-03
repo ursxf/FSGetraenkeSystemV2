@@ -17,9 +17,8 @@ from flask import Blueprint, current_app, jsonify, request
 from werkzeug.wrappers import Response
 
 from .db import db
-from .db.helpers import get_balance
+from .db.helpers import get_balance, get_user_by_card
 from .db.models import Product, Revenue, User
-from .helpers import calc_hash
 
 nfc_api_bp = Blueprint('nfc_api', __name__, url_prefix='/api/nfc')
 
@@ -51,8 +50,8 @@ def _require_api_key(f: _AnyCallable) -> _AnyCallable:
 
 def _get_admin_by_card(card_uid: str) -> Union[User, None]:
     """Return the User if *card_uid* belongs to a registered admin, else None."""
-    card_hash = calc_hash(card_uid)
-    return User.query.filter_by(card=card_hash, isop=True).one_or_none()
+    user = get_user_by_card(card_uid)
+    return user if user is not None and user.isop else None
 
 
 # ---------------------------------------------------------------------------
@@ -94,8 +93,7 @@ def identify() -> Response:
     if 'card_uid' not in data:
         return jsonify({'error': 'card_uid required'}), 400  # type: ignore[return-value]
 
-    card_hash = calc_hash(str(data['card_uid']))
-    user: User | None = User.query.filter_by(card=card_hash).one_or_none()
+    user: User | None = get_user_by_card(str(data['card_uid']))
 
     if user is None:
         return jsonify({'error': 'Card not registered'}), 404  # type: ignore[return-value]
@@ -143,8 +141,7 @@ def purchase() -> Response:
     if 'card_uid' not in data or 'product_id' not in data:
         return jsonify({'error': 'card_uid and product_id required'}), 400  # type: ignore[return-value]
 
-    card_hash = calc_hash(str(data['card_uid']))
-    user: User | None = User.query.filter_by(card=card_hash).one_or_none()
+    user: User | None = get_user_by_card(str(data['card_uid']))
     if user is None:
         return jsonify({'error': 'Card not registered'}), 404  # type: ignore[return-value]
 
