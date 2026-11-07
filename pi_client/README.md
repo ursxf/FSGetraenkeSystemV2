@@ -150,6 +150,20 @@ behaves like a normal success screen.
 
 The purchase itself is booked as usual – the sound is only played afterwards.
 
+While the shame sound plays, the "Zurück" button is hidden so it cannot be cut short.
+
+## Top-up sounds
+
+After a top-up in the admin panel the success screen plays `TOPUP_BIG_SOUND_FILE`
+when more than `TOPUP_BIG_THRESHOLD` euros were added, otherwise `TOPUP_SOUND_FILE`.
+Charging a balance plays no sound.  The files are not shipped with the repository.
+
+```python
+TOPUP_BIG_THRESHOLD = 30
+TOPUP_SOUND_FILE = 'sounds/kaching.mp3'
+TOPUP_BIG_SOUND_FILE = 'sounds/money.mp3'
+```
+
 ### Audio setup on the Pi
 
 The kiosk browser plays the sound through ALSA.  On a Pi that has never

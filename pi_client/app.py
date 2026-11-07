@@ -77,6 +77,18 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     # value (euros, e.g. -10).  None disables the feature.
     'SHAME_THRESHOLD': None,
     'SHAME_SOUND_FILE': 'sounds/shame.mp3',
+    # Sounds played after a top-up in the admin panel: the big one when more
+    # than TOPUP_BIG_THRESHOLD euros are added, the normal one otherwise.
+    'TOPUP_BIG_THRESHOLD': 30,
+    'TOPUP_SOUND_FILE': 'sounds/kaching.mp3',
+    'TOPUP_BIG_SOUND_FILE': 'sounds/money.mp3',
+}
+
+# Sound name (see /sound/<name>) -> config key of the file to play
+SOUND_FILES = {
+    'shame': 'SHAME_SOUND_FILE',
+    'topup': 'TOPUP_SOUND_FILE',
+    'topup_big': 'TOPUP_BIG_SOUND_FILE',
 }
 
 # ---------------------------------------------------------------------------
@@ -98,7 +110,7 @@ _state: dict[str, Any] = {
     'most_wanted': [],    # [{id, name, balance, debt}, …]
     'rich_bitches': [],   # [{id, name, balance}, …]
     'message': '',
-    'shame': False,       # play the shame sound on the success screen
+    'sound': None,        # sound played on the success screen (key of SOUND_FILES)
     'last_activity': time.monotonic(),
     '_version': 0,        # incremented on every state change for polling
 }
@@ -125,7 +137,7 @@ def _reset_to_idle() -> None:
             'products': [],
             'users': [],
             'message': '',
-            'shame': False,
+            'sound': None,
             'last_activity': time.monotonic(),
         })
         # Keep upcoming_events and most_wanted unmodified on reset!
@@ -485,8 +497,8 @@ def index() -> Union[str, Response]:
     if mode in ('success', 'error'):
         with _state_lock:
             msg = _state['message']
-            shame = _state['shame'] and mode == 'success'
-        return render_template('result.html', mode=mode, message=msg, shame=shame)
+            sound = _state['sound'] if mode == 'success' else None
+        return render_template('result.html', mode=mode, message=msg, sound=sound)
 
     return redirect(url_for('index'))
 
@@ -529,7 +541,7 @@ def purchase() -> Response:
         f'{_fmt_currency(result["amount"])} gekauft.\n'
         f'Neues Guthaben: {_fmt_currency(result["new_balance"])}'
     )
-    _set_state(mode='success', message=msg, shame=_is_shameful(result['new_balance']))
+    _set_state(mode='success', message=msg, sound='shame' if _is_shameful(result['new_balance']) else None)
     _refresh_debtors_async()
     return redirect(url_for('index'))
 
@@ -597,7 +609,7 @@ def purchase_multi() -> Response:
         f'Gesamt: {_fmt_currency(total)}\n'
         f'Neues Guthaben: {_fmt_currency(new_balance)}'
     )
-    _set_state(mode='success', message=msg, shame=_is_shameful(new_balance))
+    _set_state(mode='success', message=msg, sound='shame' if _is_shameful(new_balance) else None)
     _refresh_debtors_async()
     return redirect(url_for('index'))
 
@@ -625,14 +637,25 @@ def _is_shameful(new_balance: int) -> bool:
     return new_balance <= round(float(threshold) * 100)
 
 
-@app.route('/sound/shame')
-def shame_sound() -> Response:
-    """Serve the configured shame sound file."""
-    path = _config.get('SHAME_SOUND_FILE') or _DEFAULT_CONFIG['SHAME_SOUND_FILE']
+def _topup_sound(amount: float) -> str:
+    """Return the sound for a top-up of *amount* euros."""
+    threshold = _config.get('TOPUP_BIG_THRESHOLD', _DEFAULT_CONFIG['TOPUP_BIG_THRESHOLD'])
+    if threshold is not None and amount > float(threshold):
+        return 'topup_big'
+    return 'topup'
+
+
+@app.route('/sound/<name>')
+def sound(name: str) -> Response:
+    """Serve the configured sound file for *name* (see ``SOUND_FILES``)."""
+    if name not in SOUND_FILES:
+        abort(404)
+    key = SOUND_FILES[name]
+    path = _config.get(key) or _DEFAULT_CONFIG[key]
     if not os.path.isabs(path):
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
     if not os.path.isfile(path):
-        logger.warning('Shame sound file not found: %s', path)
+        logger.warning('Sound file not found: %s', path)
         abort(404)
     return send_file(path)
 
@@ -674,7 +697,7 @@ def admin_balance() -> Response:
         f'{user_name} wurden {_fmt_currency(int(amount * 100))} durch {admin_name} {action}.\n'
         f'Neues Guthaben: {_fmt_currency(result["new_balance"])}'
     )
-    _set_state(mode='success', message=msg, shame=False)
+    _set_state(mode='success', message=msg, sound=_topup_sound(amount) if recharge else None)
     _refresh_debtors_async()
     return redirect(url_for('index'))
 

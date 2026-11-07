@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="d-flex flex-column align-items-center justify-content-center flex-fill text-center p-4">
-    {% if mode == 'success' and shame %}
+    {% if sound == 'shame' %}
     <div class="display-1 mb-4">🔔</div>
     <h2 class="text-danger fw-bold mb-3">Shame! Shame! Shame!</h2>
     {% elif mode == 'success' %}
@@ -16,9 +16,10 @@
     {% endif %}
 
     <p class="fs-5 mb-4" style="white-space: pre-line;">{{ message }}</p>
-    <a href="/reset" class="btn btn-primary btn-lg">Zurück</a>
-    {% if shame %}
-    <audio id="shame-sound" src="/sound/shame" preload="auto"></audio>
+    <!-- Hidden while the shame sound plays, so it cannot be cut short -->
+    <a href="/reset" id="back-button" class="btn btn-primary btn-lg {% if sound == 'shame' %}invisible{% endif %}">Zurück</a>
+    {% if sound %}
+    <audio id="result-sound" src="/sound/{{ sound }}" preload="auto"></audio>
     {% endif %}
 </div>
 {% endblock %}
@@ -34,12 +35,14 @@
         fetch('/reset').then(() => { window.location.href = '/'; });
     }
 
-    const shameSound = document.getElementById('shame-sound');
-    if (shameSound) {
-        /* Let the sound finish before returning to idle (capped at 15 s) */
-        let timer = setTimeout(returnToIdle, 15000);
-        shameSound.addEventListener('ended', () => setTimeout(returnToIdle, 500));
-        shameSound.play().catch(() => {
+    const resultSound = document.getElementById('result-sound');
+    if (resultSound) {
+        /* Let the sound finish before returning to idle (capped at 30 s) */
+        let timer = setTimeout(returnToIdle, 30000);
+        resultSound.addEventListener('ended', () => setTimeout(returnToIdle, 500));
+        resultSound.play().catch(() => {
+            /* Sound could not be played – nothing to protect, allow going back */
+            document.getElementById('back-button').classList.remove('invisible');
             clearTimeout(timer);
             setTimeout(returnToIdle, delay);
         });

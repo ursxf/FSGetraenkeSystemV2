@@ -44,6 +44,15 @@ SHAME_THRESHOLD = None
 # The file is not shipped with the repository – put your own mp3 there.
 SHAME_SOUND_FILE = 'sounds/shame.mp3'
 
+# ---- Top-up sounds ------------------------------------------------------
+
+# Played after a top-up in the admin panel: TOPUP_BIG_SOUND_FILE when more than
+# TOPUP_BIG_THRESHOLD euros are added, TOPUP_SOUND_FILE otherwise.
+# Not shipped with the repository either – a missing file simply plays nothing.
+TOPUP_BIG_THRESHOLD = 30
+TOPUP_SOUND_FILE = 'sounds/kaching.mp3'
+TOPUP_BIG_SOUND_FILE = 'sounds/money.mp3'
+
 # ---- Display behaviour (Hardware) --------------------------------------
 
 # GPIO pin for a PIR motion sensor (e.g. 17). Set to None to disable.
