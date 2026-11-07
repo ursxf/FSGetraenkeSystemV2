@@ -76,6 +76,9 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     # Play the shame sound when a purchase leaves the balance at or below this
     # value (euros, e.g. -10).  None disables the feature.
     'SHAME_THRESHOLD': None,
+    # Show a "please pay" banner on the product screen when the balance is at
+    # or below this value (euros).  None disables the banner.
+    'DEBT_WARNING_THRESHOLD': -30,
     'SHAME_SOUND_FILE': 'sounds/shame.mp3',
     # Sounds played after a top-up in the admin panel: the big one when more
     # than TOPUP_BIG_THRESHOLD euros are added, the normal one otherwise.
@@ -488,7 +491,9 @@ def index() -> Union[str, Response]:
     if mode == 'user':
         with _state_lock:
             ctx = dict(_state)
-        return render_template('user.html', **ctx)
+        threshold = _config.get('DEBT_WARNING_THRESHOLD', _DEFAULT_CONFIG['DEBT_WARNING_THRESHOLD'])
+        debt_warning = round(float(threshold) * 100) if threshold is not None else None
+        return render_template('user.html', debt_warning=debt_warning, **ctx)
     if mode == 'admin':
         with _state_lock:
             ctx = dict(_state)

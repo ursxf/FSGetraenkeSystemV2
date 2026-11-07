@@ -34,6 +34,12 @@ CALENDAR_EVENT_LIMIT = 8
 # Number of debtors shown in the Most Wanted list on the idle screen
 MOST_WANTED_LIMIT = 10
 
+# ---- Debt warning ------------------------------------------------------
+
+# Show a "please pay" banner on the product screen when the balance is at or
+# below this value (euros, e.g. -30). Set to None to disable the banner.
+DEBT_WARNING_THRESHOLD = -30
+
 # ---- Shame sound -------------------------------------------------------
 
 # Play the "Shame! Shame! Shame!" sound when a purchase leaves the buyer's
